@@ -1,0 +1,251 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+enum UserRole {
+  citizen
+  volunteer
+  party_lead
+  department_officer
+  platform_moderator
+  platform_admin
+}
+
+enum IssueStatus {
+  open
+  duplicate
+  clustered
+  resolved
+  hidden
+}
+
+enum IssueSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum PrivacyLevel {
+  public
+  anonymous
+  blurred
+}
+
+enum PromiseStatus {
+  draft
+  published
+  adopted
+  completed
+  on_track
+  delayed
+  disputed
+}
+
+model User {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone_number       String?              @unique @db.VarChar(15)
+  email              String?              @unique @db.VarChar(255)
+  display_name       String?              @db.VarChar(100)
+  role               UserRole             @default(citizen)
+  preferred_language String               @default("en") @db.VarChar(5)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+  issues             Issue[]
+  verifications      VerificationEvent[]
+  delivery_updates   DeliveryUpdate[]
+  audit_events       AuditEvent[]
+
+  @@map("users")
+}
+
+model Area {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(255)
+  type       String   @db.VarChar(50)
+  parent_id  String?  @db.Uuid
+  parent     Area?    @relation("AreaHierarchy", fields: [parent_id], references: [id])
+  children   Area[]   @relation("AreaHierarchy")
+  boundary   Unsupported("geometry(Geometry, 4326)")?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  issues     Issue[]
+  clusters   IssueCluster[]
+  manifestos Manifesto[]
+
+  @@map("areas")
+}
+
+model IssueCluster {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id        String             @db.Uuid
+  area           Area               @relation(fields: [area_id], references: [id])
+  category       String             @db.VarChar(50)
+  title          String             @db.VarChar(255)
+  summary        String?            @db.Text
+  priority_score Float              @default(0.0)
+  status         String             @default("draft") @db.VarChar(50)
+  created_at     DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  issues         Issue[]
+  verifications  VerificationEvent[]
+  promises       ManifestoPromise[]
+
+  @@map("issue_clusters")
+}
+
+model Issue {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporter_id           String?               @db.Uuid
+  reporter              User?                 @relation(fields: [reporter_id], references: [id])
+  cluster_id            String?               @db.Uuid
+  cluster               IssueCluster?         @relation(fields: [cluster_id], references: [id])
+  area_id               String?               @db.Uuid
+  area                  Area?                 @relation(fields: [area_id], references: [id])
+  category              String                @db.VarChar(50)
+  description           String                @db.Text
+  description_embedding Unsupported("vector(1536)")?
+  severity              IssueSeverity         @default(medium)
+  privacy               PrivacyLevel          @default(public)
+  exact_location        Unsupported("geometry(Point, 4326)")
+  public_location       Unsupported("geometry(Point, 4326)")
+  status                IssueStatus           @default(open)
+  idempotency_key       String?               @unique @db.VarChar(255)
+  created_at            DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  media                 IssueMedia[]
+  supports              IssueSupport[]
+
+  @@map("issues")
+}
+
+model IssueMedia {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issue_id     String   @db.Uuid
+  issue        Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  media_url    String   @db.VarChar(512)
+  media_type   String   @db.VarChar(50)
+  media_hash   String   @db.VarChar(64)
+  is_processed Boolean  @default(false)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("issue_media")
+}
+
+model IssueSupport {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  issue_id   String   @db.Uuid
+  issue      Issue    @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, issue_id])
+  @@map("issue_supports")
+}
+
+model VerificationEvent {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cluster_id String       @db.Uuid
+  cluster    IssueCluster @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
+  verifier_id String       @db.Uuid
+  verifier   User         @relation(fields: [verifier_id], references: [id])
+  outcome    String       @db.VarChar(50)
+  notes      String?      @db.Text
+  checklist  Json
+  created_at DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@map("verification_events")
+}
+
+model Manifesto {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id      String             @db.Uuid
+  area         Area               @relation(fields: [area_id], references: [id])
+  version      Int                @default(1)
+  is_published Boolean            @default(false)
+  created_at   DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  promises     ManifestoPromise[]
+
+  @@unique([area_id, version])
+  @@map("manifestos")
+}
+
+model ManifestoPromise {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  manifesto_id   String         @db.Uuid
+  manifesto      Manifesto      @relation(fields: [manifesto_id], references: [id], onDelete: Cascade)
+  cluster_id     String?        @db.Uuid
+  cluster        IssueCluster?  @relation(fields: [cluster_id], references: [id])
+  time_horizon   String         @db.VarChar(50)
+  title          String         @db.VarChar(255)
+  description    String         @db.Text
+  target_metric  String?        @db.VarChar(255)
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+  party_promises PartyPromise[]
+
+  @@map("manifesto_promises")
+}
+
+model PartyProfile {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String         @db.VarChar(255)
+  official_logo_url String?        @db.VarChar(512)
+  is_verified      Boolean        @default(false)
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  promises         PartyPromise[]
+
+  @@map("party_profiles")
+}
+
+model PartyPromise {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_id          String            @db.Uuid
+  party             PartyProfile      @relation(fields: [party_id], references: [id])
+  source_promise_id String            @db.Uuid
+  source_promise    ManifestoPromise  @relation(fields: [source_promise_id], references: [id])
+  adopted_title     String            @db.VarChar(255)
+  adopted_description String          @db.Text
+  target_metric     String            @db.VarChar(255)
+  timeline          DateTime          @db.Timestamptz(6)
+  status            PromiseStatus     @default(adopted)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  delivery_updates  DeliveryUpdate[]
+
+  @@map("party_promises")
+}
+
+model DeliveryUpdate {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id String        @db.Uuid
+  party_promise    PartyPromise  @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
+  updater_id       String        @db.Uuid
+  updater          User          @relation(fields: [updater_id], references: [id])
+  status           PromiseStatus
+  update_text      String        @db.Text
+  evidence_url     String?       @db.VarChar(512)
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+
+  @@map("delivery_updates")
+}
+
+model AuditEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id     String?  @db.Uuid
+  actor        User?    @relation(fields: [actor_id], references: [id])
+  event_type   String   @db.VarChar(100)
+  target_table String   @db.VarChar(50)
+  target_id    String   @db.Uuid
+  payload      Json?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([target_table, target_id])
+  @@map("audit_events")
+}
