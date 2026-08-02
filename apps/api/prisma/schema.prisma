@@ -6,6 +6,10 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  // node:22-alpine (Cloudflare container image) ships OpenSSL 3 on musl;
+  // without this target Prisma falls back to the openssl-1.1.x engine and
+  // crashes at runtime with "libssl.so.1.1: No such file or directory".
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 enum UserRole {
@@ -38,6 +42,24 @@ enum PrivacyLevel {
   blurred
 }
 
+enum OrganizationKind {
+  government
+  utility
+  ngo
+  party
+  volunteer_group
+  research_institution
+  platform
+}
+
+enum OrganizationRole {
+  owner
+  admin
+  officer
+  researcher
+  member
+}
+
 enum PromiseStatus {
   draft
   published
@@ -46,82 +68,304 @@ enum PromiseStatus {
   on_track
   delayed
   disputed
+  deferred
+  rejected
+  no_update
 }
 
 model User {
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  phone_number       String?              @unique @db.VarChar(15)
-  email              String?              @unique @db.VarChar(255)
-  display_name       String?              @db.VarChar(100)
-  role               UserRole             @default(citizen)
-  preferred_language String               @default("en") @db.VarChar(5)
-  created_at         DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
-  issues             Issue[]
-  verifications      VerificationEvent[]
-  delivery_updates   DeliveryUpdate[]
-  audit_events       AuditEvent[]
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerk_user_id            String?                  @unique @db.VarChar(255)
+  phone_number             String?                  @unique @db.VarChar(15)
+  email                    String?                  @unique @db.VarChar(255)
+  display_name             String?                  @db.VarChar(100)
+  role                     UserRole                 @default(citizen)
+  preferred_language       String                   @default("en") @db.VarChar(5)
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+  issues                   Issue[]
+  verifications            VerificationEvent[]
+  delivery_updates         DeliveryUpdate[]
+  audit_events             AuditEvent[]
+  volunteer_applications   VolunteerApplication[]   @relation("VolunteerApplicant")
+  volunteer_reviews        VolunteerApplication[]   @relation("VolunteerReviewer")
+  disputes_raised          DeliveryDispute[]        @relation("DisputeAuthor")
+  disputes_resolved        DeliveryDispute[]        @relation("DisputeResolver")
+  notification_preference  NotificationPreference?
+  moderation_actions       ModerationAction[]
+  party_memberships        PartyMembership[]
+  notifications            UserNotification[]
+  verification_assignments VerificationAssignment[]
+  external_case_appeals    ExternalCaseAppeal[]
+  promise_verdicts         CitizenPromiseVerdict[]
+  organization_memberships OrganizationMembership[]
+  organization_invitations OrganizationInvitation[] @relation("OrganizationInvitationIssuer")
+  sharing_consents_granted ReportSharingConsent[]
+  scope_grants            ActorScopeGrant[]         @relation("ScopeGrantActor")
+  scope_grants_issued     ActorScopeGrant[]         @relation("ScopeGrantIssuer")
+  published_manifestos    Manifesto[]               @relation("ManifestoPublisher")
 
   @@map("users")
 }
 
+model Organization {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String                   @db.VarChar(255)
+  kind        OrganizationKind
+  verified_at DateTime?                @db.Timestamptz(6)
+  active      Boolean                  @default(true)
+  created_at  DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+  memberships OrganizationMembership[]
+  invitations OrganizationInvitation[]
+
+  @@unique([name, kind])
+  @@map("organizations")
+}
+
+model OrganizationMembership {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String           @db.Uuid
+  user_id         String           @db.Uuid
+  role            OrganizationRole @default(member)
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, user_id])
+  @@index([user_id, role])
+  @@map("organization_memberships")
+}
+
+model OrganizationInvitation {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String           @db.Uuid
+  invitee_email   String           @db.VarChar(255)
+  role            OrganizationRole @default(member)
+  token_hash      String           @unique @db.Char(64)
+  invited_by      String           @db.Uuid
+  expires_at      DateTime         @db.Timestamptz(6)
+  accepted_at     DateTime?        @db.Timestamptz(6)
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  inviter         User             @relation("OrganizationInvitationIssuer", fields: [invited_by], references: [id])
+
+  @@index([organization_id, invitee_email])
+  @@index([expires_at])
+  @@map("organization_invitations")
+}
+
+model VolunteerApplication {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String   @db.Uuid
+  user         User     @relation("VolunteerApplicant", fields: [user_id], references: [id])
+  motivation   String   @db.Text
+  languages    String[]
+  status       String   @default("pending") @db.VarChar(30)
+  reviewed_by  String?  @db.Uuid
+  reviewer     User?    @relation("VolunteerReviewer", fields: [reviewed_by], references: [id])
+  review_notes String?  @db.Text
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("volunteer_applications")
+}
+
+model NotificationPreference {
+  user_id         String   @id @db.Uuid
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  channels        String[]
+  saved_area_ids  String[]
+  issue_updates   Boolean  @default(true)
+  promise_updates Boolean  @default(true)
+  language        String   @default("en") @db.VarChar(5)
+  push_token      String?  @db.VarChar(255)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("notification_preferences")
+}
+
+model UserNotification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title      String    @db.VarChar(255)
+  body       String    @db.Text
+  data       Json?
+  read_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id, read_at, created_at])
+  @@map("user_notifications")
+}
+
 model Area {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String   @db.VarChar(255)
-  type       String   @db.VarChar(50)
-  parent_id  String?  @db.Uuid
-  parent     Area?    @relation("AreaHierarchy", fields: [parent_id], references: [id])
-  children   Area[]   @relation("AreaHierarchy")
-  boundary   Unsupported("geometry(Geometry, 4326)")?
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  issues     Issue[]
-  clusters   IssueCluster[]
-  manifestos Manifesto[]
+  id          String                                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String                                   @db.VarChar(255)
+  type        String                                   @db.VarChar(50)
+  parent_id   String?                                  @db.Uuid
+  parent      Area?                                    @relation("AreaHierarchy", fields: [parent_id], references: [id])
+  children    Area[]                                   @relation("AreaHierarchy")
+  boundary    Unsupported("geometry(Geometry, 4326)")?
+  created_at  DateTime                                 @default(now()) @db.Timestamptz(6)
+  issues      Issue[]
+  clusters    IssueCluster[]
+  manifestos  Manifesto[]
+  authorities CivicAuthority[]
+  pincode_boundaries PincodeBoundary[] @relation("PincodeArea")
 
   @@map("areas")
 }
 
 model IssueCluster {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  area_id        String             @db.Uuid
-  area           Area               @relation(fields: [area_id], references: [id])
-  category       String             @db.VarChar(50)
-  title          String             @db.VarChar(255)
-  summary        String?            @db.Text
-  priority_score Float              @default(0.0)
-  status         String             @default("draft") @db.VarChar(50)
-  created_at     DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id        String                   @db.Uuid
+  area           Area                     @relation(fields: [area_id], references: [id])
+  category       String                   @db.VarChar(50)
+  title          String                   @db.VarChar(255)
+  summary        String?                  @db.Text
+  priority_score Float                    @default(0.0)
+  status         String                   @default("draft") @db.VarChar(50)
+  visibility     String                   @default("public") @db.VarChar(20)
+  pincode_code   String?                  @db.VarChar(6)
+  created_at     DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
   issues         Issue[]
   verifications  VerificationEvent[]
   promises       ManifestoPromise[]
+  assignments    VerificationAssignment[]
+  external_cases ExternalGrievanceCase[]
 
   @@map("issue_clusters")
 }
 
 model Issue {
-  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reporter_id           String?               @db.Uuid
-  reporter              User?                 @relation(fields: [reporter_id], references: [id])
-  cluster_id            String?               @db.Uuid
-  cluster               IssueCluster?         @relation(fields: [cluster_id], references: [id])
-  area_id               String?               @db.Uuid
-  area                  Area?                 @relation(fields: [area_id], references: [id])
-  category              String                @db.VarChar(50)
-  description           String                @db.Text
+  id                    String                               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporter_id           String?                              @db.Uuid
+  reporter              User?                                @relation(fields: [reporter_id], references: [id])
+  cluster_id            String?                              @db.Uuid
+  cluster               IssueCluster?                        @relation(fields: [cluster_id], references: [id])
+  area_id               String?                              @db.Uuid
+  area                  Area?                                @relation(fields: [area_id], references: [id])
+  category              String                               @db.VarChar(50)
+  description           String                               @db.Text
   description_embedding Unsupported("vector(1536)")?
-  severity              IssueSeverity         @default(medium)
-  privacy               PrivacyLevel          @default(public)
+  severity              IssueSeverity                        @default(medium)
+  privacy               PrivacyLevel                         @default(public)
   exact_location        Unsupported("geometry(Point, 4326)")
   public_location       Unsupported("geometry(Point, 4326)")
-  status                IssueStatus           @default(open)
-  idempotency_key       String?               @unique @db.VarChar(255)
-  created_at            DateTime              @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  status                IssueStatus                          @default(open)
+  visibility            String                               @default("public") @db.VarChar(20)
+  idempotency_key       String?                              @unique @db.VarChar(255)
+  pincode_code          String?                              @db.VarChar(6)
+  created_at            DateTime                             @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                             @default(now()) @updatedAt @db.Timestamptz(6)
   media                 IssueMedia[]
   supports              IssueSupport[]
+  external_cases        ExternalGrievanceCase[]
+  sharing_consents      ReportSharingConsent[]
 
   @@map("issues")
+}
+
+model CivicAuthority {
+  id                   String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String                  @db.VarChar(255)
+  jurisdiction_area_id String?                 @db.Uuid
+  jurisdiction_area    Area?                   @relation(fields: [jurisdiction_area_id], references: [id])
+  category             String                  @db.VarChar(50)
+  service_code         String                  @db.VarChar(100)
+  service_name         String                  @db.VarChar(255)
+  description          String?                 @db.Text
+  open311_endpoint     String?                 @db.VarChar(512)
+  active               Boolean                 @default(true)
+  created_at           DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+  external_cases       ExternalGrievanceCase[]
+  sharing_consents     ReportSharingConsent[]
+
+  @@unique([jurisdiction_area_id, category, service_code])
+  @@index([category, active])
+  @@map("civic_authorities")
+}
+
+model ReportSharingConsent {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issue_id     String         @db.Uuid
+  authority_id String         @db.Uuid
+  granted_by   String         @db.Uuid
+  purpose      String         @db.VarChar(100)
+  expires_at   DateTime?      @db.Timestamptz(6)
+  revoked_at   DateTime?      @db.Timestamptz(6)
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  issue        Issue          @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  authority    CivicAuthority @relation(fields: [authority_id], references: [id], onDelete: Cascade)
+  grantor      User           @relation(fields: [granted_by], references: [id])
+
+  @@unique([issue_id, authority_id, granted_by, purpose])
+  @@index([issue_id, authority_id, revoked_at])
+  @@map("report_sharing_consents")
+}
+
+model ExternalGrievanceCase {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issue_id       String                 @db.Uuid
+  issue          Issue                  @relation(fields: [issue_id], references: [id], onDelete: Cascade)
+  cluster_id     String?                @db.Uuid
+  cluster        IssueCluster?          @relation(fields: [cluster_id], references: [id])
+  authority_id   String                 @db.Uuid
+  authority      CivicAuthority         @relation(fields: [authority_id], references: [id])
+  provider       String                 @db.VarChar(50)
+  external_id    String                 @db.VarChar(255)
+  service_code   String                 @db.VarChar(100)
+  status         String                 @default("open") @db.VarChar(30)
+  status_notes   String?                @db.Text
+  public_url     String?                @db.VarChar(512)
+  submitted_at   DateTime               @default(now()) @db.Timestamptz(6)
+  closed_at      DateTime?              @db.Timestamptz(6)
+  last_synced_at DateTime?              @db.Timestamptz(6)
+  raw_payload    Json?
+  created_at     DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  documents      ExternalCaseDocument[]
+  appeals        ExternalCaseAppeal[]
+
+  @@unique([provider, external_id])
+  @@index([issue_id, status])
+  @@index([cluster_id, status])
+  @@map("external_grievance_cases")
+}
+
+model ExternalCaseDocument {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  external_case_id String                @db.Uuid
+  external_case    ExternalGrievanceCase @relation(fields: [external_case_id], references: [id], onDelete: Cascade)
+  title            String                @db.VarChar(255)
+  document_url     String                @db.VarChar(512)
+  media_type       String?               @db.VarChar(100)
+  is_public        Boolean               @default(true)
+  created_at       DateTime              @default(now()) @db.Timestamptz(6)
+
+  @@map("external_case_documents")
+}
+
+model ExternalCaseAppeal {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  external_case_id   String                @db.Uuid
+  external_case      ExternalGrievanceCase @relation(fields: [external_case_id], references: [id], onDelete: Cascade)
+  raised_by          String                @db.Uuid
+  author             User                  @relation(fields: [raised_by], references: [id])
+  reason             String                @db.Text
+  evidence_url       String?               @db.VarChar(512)
+  external_appeal_id String?               @db.VarChar(255)
+  status             String                @default("submitted") @db.VarChar(30)
+  response_notes     String?               @db.Text
+  created_at         DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([external_case_id, status])
+  @@map("external_case_appeals")
 }
 
 model IssueMedia {
@@ -149,28 +393,51 @@ model IssueSupport {
 }
 
 model VerificationEvent {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  cluster_id String       @db.Uuid
-  cluster    IssueCluster @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cluster_id  String       @db.Uuid
+  cluster     IssueCluster @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
   verifier_id String       @db.Uuid
-  verifier   User         @relation(fields: [verifier_id], references: [id])
-  outcome    String       @db.VarChar(50)
-  notes      String?      @db.Text
-  checklist  Json
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
+  verifier    User         @relation(fields: [verifier_id], references: [id])
+  outcome     String       @db.VarChar(50)
+  notes       String?      @db.Text
+  checklist   Json
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
 
   @@map("verification_events")
 }
 
+model VerificationAssignment {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cluster_id   String       @db.Uuid
+  cluster      IssueCluster @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
+  volunteer_id String       @db.Uuid
+  volunteer    User         @relation(fields: [volunteer_id], references: [id], onDelete: Cascade)
+  status       String       @default("assigned") @db.VarChar(30)
+  safety_notes String?      @db.Text
+  due_at       DateTime?    @db.Timestamptz(6)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([cluster_id, volunteer_id])
+  @@map("verification_assignments")
+}
+
 model Manifesto {
-  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  area_id      String             @db.Uuid
-  area         Area               @relation(fields: [area_id], references: [id])
-  version      Int                @default(1)
-  is_published Boolean            @default(false)
-  created_at   DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
-  promises     ManifestoPromise[]
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id             String             @db.Uuid
+  area                Area               @relation(fields: [area_id], references: [id])
+  version             Int                @default(1)
+  is_published        Boolean            @default(false)
+  published_at        DateTime?          @db.Timestamptz(6)
+  published_by        String?            @db.Uuid
+  publisher           User?              @relation("ManifestoPublisher", fields: [published_by], references: [id])
+  pincode_code        String?            @db.VarChar(6)
+  created_at          DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  generation_provider String?            @db.VarChar(50)
+  generation_model    String?            @db.VarChar(100)
+  source_cluster_ids  String[]           @default([])
+  promises            ManifestoPromise[]
 
   @@unique([area_id, version])
   @@map("manifestos")
@@ -194,46 +461,155 @@ model ManifestoPromise {
 }
 
 model PartyProfile {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String         @db.VarChar(255)
-  official_logo_url String?        @db.VarChar(512)
-  is_verified      Boolean        @default(false)
-  created_at       DateTime       @default(now()) @db.Timestamptz(6)
-  promises         PartyPromise[]
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String            @db.VarChar(255)
+  official_logo_url String?           @db.VarChar(512)
+  is_verified       Boolean           @default(false)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  promises          PartyPromise[]
+  memberships       PartyMembership[]
 
   @@map("party_profiles")
 }
 
+model PartyMembership {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String       @db.Uuid
+  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  party_id    String       @db.Uuid
+  party       PartyProfile @relation(fields: [party_id], references: [id], onDelete: Cascade)
+  title       String       @db.VarChar(100)
+  is_approved Boolean      @default(true)
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, party_id])
+  @@map("party_memberships")
+}
+
 model PartyPromise {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  party_id          String            @db.Uuid
-  party             PartyProfile      @relation(fields: [party_id], references: [id])
-  source_promise_id String            @db.Uuid
-  source_promise    ManifestoPromise  @relation(fields: [source_promise_id], references: [id])
-  adopted_title     String            @db.VarChar(255)
-  adopted_description String          @db.Text
-  target_metric     String            @db.VarChar(255)
-  timeline          DateTime          @db.Timestamptz(6)
-  status            PromiseStatus     @default(adopted)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  delivery_updates  DeliveryUpdate[]
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_id            String                  @db.Uuid
+  party               PartyProfile            @relation(fields: [party_id], references: [id])
+  source_promise_id   String                  @db.Uuid
+  source_promise      ManifestoPromise        @relation(fields: [source_promise_id], references: [id])
+  adopted_title       String                  @db.VarChar(255)
+  adopted_description String                  @db.Text
+  target_metric       String                  @db.VarChar(255)
+  timeline            DateTime                @db.Timestamptz(6)
+  status              PromiseStatus           @default(adopted)
+  created_at          DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+  owner_department    String?                 @db.VarChar(150)
+  estimated_cost      String?                 @db.VarChar(100)
+  feasibility_notes   String?                 @db.Text
+  delivery_updates    DeliveryUpdate[]
+  disputes            DeliveryDispute[]
+  milestones          PromiseMilestone[]
+  citizen_verdicts    CitizenPromiseVerdict[]
 
   @@map("party_promises")
 }
 
+model PromiseMilestone {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id String       @db.Uuid
+  party_promise    PartyPromise @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
+  title            String       @db.VarChar(255)
+  description      String?      @db.Text
+  sequence         Int
+  due_at           DateTime?    @db.Timestamptz(6)
+  completed_at     DateTime?    @db.Timestamptz(6)
+  status           String       @default("pending") @db.VarChar(30)
+  evidence_url     String?      @db.VarChar(512)
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([party_promise_id, sequence])
+  @@map("promise_milestones")
+}
+
+model CitizenPromiseVerdict {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id String       @db.Uuid
+  party_promise    PartyPromise @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
+  user_id          String       @db.Uuid
+  user             User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  verdict          String       @db.VarChar(30)
+  evidence_url     String?      @db.VarChar(512)
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([party_promise_id, user_id])
+  @@index([party_promise_id, verdict])
+  @@map("citizen_promise_verdicts")
+}
+
 model DeliveryUpdate {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  party_promise_id String        @db.Uuid
-  party_promise    PartyPromise  @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
-  updater_id       String        @db.Uuid
-  updater          User          @relation(fields: [updater_id], references: [id])
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id String            @db.Uuid
+  party_promise    PartyPromise      @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
+  updater_id       String            @db.Uuid
+  updater          User              @relation(fields: [updater_id], references: [id])
   status           PromiseStatus
-  update_text      String        @db.Text
-  evidence_url     String?       @db.VarChar(512)
-  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  update_text      String            @db.Text
+  evidence_url     String?           @db.VarChar(512)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  disputes         DeliveryDispute[]
 
   @@map("delivery_updates")
+}
+
+model DeliveryDispute {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id   String          @db.Uuid
+  party_promise      PartyPromise    @relation(fields: [party_promise_id], references: [id], onDelete: Cascade)
+  delivery_update_id String?         @db.Uuid
+  delivery_update    DeliveryUpdate? @relation(fields: [delivery_update_id], references: [id])
+  raised_by          String          @db.Uuid
+  author             User            @relation("DisputeAuthor", fields: [raised_by], references: [id])
+  reason             String          @db.Text
+  evidence_url       String          @db.VarChar(512)
+  status             String          @default("open") @db.VarChar(30)
+  resolution_notes   String?         @db.Text
+  resolved_by        String?         @db.Uuid
+  resolver           User?           @relation("DisputeResolver", fields: [resolved_by], references: [id])
+  is_public          Boolean         @default(false)
+  public_rationale   String?         @db.Text
+  published_at       DateTime?       @db.Timestamptz(6)
+  created_at         DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("delivery_disputes")
+}
+
+model ModerationAction {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  target_table String   @db.VarChar(50)
+  target_id    String   @db.VarChar(255)
+  action       String   @db.VarChar(50)
+  reason       String   @db.Text
+  actor_id     String   @db.Uuid
+  actor        User     @relation(fields: [actor_id], references: [id])
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("moderation_actions")
+}
+
+model BackgroundJob {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type         String    @db.VarChar(100)
+  payload      Json
+  status       String    @default("pending") @db.VarChar(30)
+  attempts     Int       @default(0)
+  max_attempts Int       @default(5)
+  run_after    DateTime  @default(now()) @db.Timestamptz(6)
+  locked_at    DateTime? @db.Timestamptz(6)
+  last_error   String?   @db.Text
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([status, run_after])
+  @@map("background_jobs")
 }
 
 model AuditEvent {
@@ -248,4 +624,52 @@ model AuditEvent {
 
   @@index([target_table, target_id])
   @@map("audit_events")
+}
+
+model PincodeBoundary {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pincode_code       String   @unique @db.VarChar(6)
+  name               String   @db.VarChar(255)
+  area_id            String?  @db.Uuid
+  area               Area?    @relation("PincodeArea", fields: [area_id], references: [id])
+  centroid_latitude  Float    @db.DoublePrecision
+  centroid_longitude Float    @db.DoublePrecision
+  boundary           Unsupported("geometry(Polygon, 4326)")?
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([area_id])
+  @@map("pincode_boundaries")
+}
+
+model OutboxEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_type   String   @db.VarChar(100)
+  entity_type  String   @db.VarChar(100)
+  entity_id    String   @db.VarChar(255)
+  payload      Json?
+  dispatched_at DateTime? @db.Timestamptz(6)
+  status       String   @default("pending") @db.VarChar(30)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, dispatched_at])
+  @@map("outbox_events")
+}
+
+model ActorScopeGrant {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id     String   @db.Uuid
+  actor        User     @relation("ScopeGrantActor", fields: [actor_id], references: [id], onDelete: Cascade)
+  scope_type   String   @db.VarChar(50)
+  scope_id     String   @db.VarChar(255)
+  capabilities String[]
+  issued_by    String   @db.Uuid
+  issuer       User     @relation("ScopeGrantIssuer", fields: [issued_by], references: [id])
+  starts_at    DateTime @default(now()) @db.Timestamptz(6)
+  ends_at      DateTime? @db.Timestamptz(6)
+  revoked_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([actor_id, scope_type, scope_id])
+  @@index([scope_type, scope_id, revoked_at])
+  @@map("actor_scope_grants")
 }
