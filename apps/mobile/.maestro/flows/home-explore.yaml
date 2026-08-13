@@ -1,0 +1,15 @@
+# Home locality-first feed and the Explore map/list drill-down.
+# Map assertions are text-only (hint + badges), so the flow passes whether the
+# MapLibre style URL is configured or the privacy-safe SVG fallback renders.
+appId: org.tgim.app
+---
+- launchApp
+- assertVisible: "What's happening near you?"
+- assertVisible: "Browse by category"
+- assertVisible: "Near you"
+- tapOn:
+    id: "tab-explore"
+- assertVisible: "Discover issues across your locality"
+- tapOn: "List"
+- tapOn: "Map"
+- assertVisible: "Tap a dot to open an issue"

@@ -1,0 +1,10 @@
+# Promises surface: local priorities and adopted-commitment delivery tracking.
+# Section headers always render; content is either cards or empty states, so
+# only the stable chrome is asserted.
+appId: org.tgim.app
+---
+- launchApp
+- tapOn:
+    id: "tab-promises"
+- assertVisible: "Local priorities"
+- assertVisible: "Delivery tracking"

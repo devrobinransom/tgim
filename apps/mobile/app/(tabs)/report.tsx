@@ -225,6 +225,7 @@ export default function ReportWizard() {
             onChangeText={setDescription}
             placeholder={t('descriptionPlaceholder')}
             placeholderTextColor={theme.slate[400]}
+            testID="report-description-input"
             multiline
             style={{
               backgroundColor: theme.card,

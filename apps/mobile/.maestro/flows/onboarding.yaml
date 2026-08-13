@@ -1,0 +1,21 @@
+# Citizen-first onboarding: welcome -> locality -> interests -> Home.
+#
+# Runs against the dev-client or production build (org.tgim.app), NOT Expo Go.
+# `clearState` makes the run deterministic on Android; on iOS the SecureStore
+# keychain may persist, so the flow degrades gracefully when onboarding is
+# already complete and asserts the Home surface either way.
+appId: org.tgim.app
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+- runFlow:
+    when:
+      visible: "Report what is broken"
+    commands:
+      - tapOn: "Next"
+      - tapOn: "Next"
+      - tapOn: "Water"
+      - tapOn: "Roads"
+      - tapOn: "Enter app"
+- assertVisible: "What's happening near you?"

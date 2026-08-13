@@ -1,0 +1,30 @@
+# Report wizard: location -> category -> voice/typed description -> submit.
+#
+# The API backend is optional for this flow: without it the report lands in the
+# offline queue, so both the synced and offline outcomes are accepted.
+appId: org.tgim.app
+---
+- launchApp
+- tapOn:
+    id: "tab-report"
+- assertVisible: "Pin a Problem"
+- tapOn: "Next"
+- tapOn: "Roads"
+- tapOn: "Next"
+- tapOn:
+    id: "report-description-input"
+- inputText: "Deep pothole on the service road near the main gate"
+- tapOn: "Next"
+- tapOn: "Submit report"
+- runFlow:
+    when:
+      visible: "Report submitted and synced"
+    commands:
+      - assertVisible: "Report another"
+- runFlow:
+    when:
+      visible: "Saved offline"
+    commands:
+      - assertVisible: "Report another"
+- tapOn: "Report another"
+- assertVisible: "Pin a Problem"

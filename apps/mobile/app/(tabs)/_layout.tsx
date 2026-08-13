@@ -26,6 +26,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: t('home'),
+          tabBarButtonTestID: 'tab-home',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
@@ -33,6 +34,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: t('explore'),
+          tabBarButtonTestID: 'tab-explore',
           tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} />,
         }}
       />
@@ -40,6 +42,7 @@ export default function TabsLayout() {
         name="report"
         options={{
           title: t('report'),
+          tabBarButtonTestID: 'tab-report',
           tabBarIcon: ({ color, size }) => <Ionicons name="add-circle" size={size} color={color} />,
         }}
       />
@@ -47,6 +50,7 @@ export default function TabsLayout() {
         name="promises"
         options={{
           title: t('promises'),
+          tabBarButtonTestID: 'tab-promises',
           tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done-circle" size={size} color={color} />,
         }}
       />
@@ -54,6 +58,7 @@ export default function TabsLayout() {
         name="me"
         options={{
           title: t('you'),
+          tabBarButtonTestID: 'tab-me',
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
         }}
       />
