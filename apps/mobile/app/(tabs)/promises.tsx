@@ -17,7 +17,6 @@ export default function PromisesScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { areaId, areaName } = useActiveArea();
-
   const fetchManifesto = useCallback(() => api.manifesto.get(areaId).catch(() => null), [areaId]);
   const { data: manifesto } = useFetch(fetchManifesto);
   const fetchAdopted = useCallback(() => api.party.listPromises().catch(() => []), []);
@@ -63,7 +62,7 @@ export default function PromisesScreen() {
             <Text style={{ color: theme.text, fontSize: 16, fontWeight: '800' }}>{promise.title}</Text>
             <Text style={{ color: theme.textMuted }}>{promise.description}</Text>
             {promise.target_metric ? (
-              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13 }}>{`Target: ${promise.target_metric}`}</Text>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13 }}>{`${t('target')}: ${promise.target_metric}`}</Text>
             ) : null}
           </View>
         ))
@@ -95,6 +94,7 @@ export default function PromisesScreen() {
 }
 
 function PromiseCard({ promise, onPress }: { promise: PartyPromise; onPress: () => void }) {
+  const { t } = useI18n();
   return (
     <View
       style={{
@@ -112,9 +112,9 @@ function PromiseCard({ promise, onPress }: { promise: PartyPromise; onPress: () 
       </View>
       <Text style={{ color: theme.text, fontSize: 16, fontWeight: '800' }}>{promise.adopted_title}</Text>
       <Text numberOfLines={3} style={{ color: theme.textMuted }}>{promise.adopted_description}</Text>
-      <View style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
         <Ionicons name="trail-sign" size={16} color={theme.accent} />
-        <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13 }}> View delivery journey</Text>
+        <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13 }}>{t('viewDelivery')}</Text>
       </View>
     </View>
   );

@@ -37,9 +37,9 @@ export default function YouScreen() {
         motivation: 'I want to verify local civic reports carefully and safely in my community.',
         languages: [language],
       });
-      setMessage('Application sent. An administrator will review it.');
+      setMessage(t('volunteerApplied'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Application could not be sent.');
+      setMessage(error instanceof Error ? error.message : t('volunteerApplyFailed'));
     }
   };
 
@@ -49,9 +49,9 @@ export default function YouScreen() {
         channels: ['in_app'], saved_area_ids: [areaId], issue_updates: true,
         promise_updates: true, language: language === 'hi' || language === 'mr' ? language : 'en',
       });
-      setMessage('Private in-app updates enabled.');
+      setMessage(t('updatesEnabled'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Notifications could not be enabled.');
+      setMessage(error instanceof Error ? error.message : t('updatesLoadFailed'));
     }
   };
 
@@ -104,7 +104,7 @@ export default function YouScreen() {
       <SectionHeader title={t('updatesTitle')} subtitle={t('updatesBody')} />
       <View style={{ gap: 10 }}>
         <Button label={t('enableInAppUpdates')} variant="secondary" onPress={() => void enableNotifications()} />
-        <Button label={t('checkInAppUpdates')} variant="secondary" onPress={() => void api.notifications.list().then(setNotifications).catch(error => setMessage(error instanceof Error ? error.message : 'Updates could not be loaded.'))} />
+        <Button label={t('checkInAppUpdates')} variant="secondary" onPress={() => void api.notifications.list().then(setNotifications).catch(error => setMessage(error instanceof Error ? error.message : t('updatesLoadFailed')))} />
         {notifications.map(notification => (
           <View key={notification.id} style={{ backgroundColor: theme.card, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.md, gap: 2 }}>
             <Text selectable style={{ color: theme.text, fontWeight: '700' }}>{notification.title}</Text>

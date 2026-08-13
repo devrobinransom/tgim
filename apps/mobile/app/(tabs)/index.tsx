@@ -70,7 +70,7 @@ export default function HomeScreen() {
       <SectionHeader title={t('areaSnapshot')} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <SnapshotPill label={snapshotLoading ? '—' : String(areaSummary?.report_count ?? 0)} value={t('nearYou')} />
-        <SnapshotPill label={String(categoryCounts.size)} value="categories" />
+        <SnapshotPill label={String(categoryCounts.size)} value={t('categories')} />
         <SnapshotPill label={String(topMaybe.length)} value={t('inFocus')} />
       </View>
 

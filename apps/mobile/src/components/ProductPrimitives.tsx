@@ -6,6 +6,7 @@ import Svg, { Circle, Rect } from 'react-native-svg';
 import type { PublicIssue, IssueCategory, PromiseStatus } from '@tgim/shared';
 import { tokens } from '@tgim/shared';
 import { theme } from '../theme';
+import { useI18n } from '../i18n';
 import { Badge } from './Badge';
 import { Sparkline } from './Sparkline';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
@@ -87,11 +88,13 @@ export function MapPreview({
   onSelect?: (issueId: string) => void;
   selectedAreaName?: string;
 }) {
+  const { t } = useI18n();
   const mapStyle = process.env.EXPO_PUBLIC_MAP_STYLE_URL;
   const shape = (processStyle: string | undefined) => ({ type: 'FeatureCollection', features: issues.map(issue => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [issue.public_longitude, issue.public_latitude] }, properties: { id: issue.id, category: issue.category } })) }) as any;
+  const accessibility = `${t('mapA11ySafe')}: ${issues.length} ${t('reports')}`;
   if (mapStyle) {
     return (
-      <View accessibilityLabel={`Privacy-safe map showing ${issues.length} blurred public report locations`} style={{ height, borderRadius: theme.radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+      <View accessibilityLabel={accessibility} style={{ height, borderRadius: theme.radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
         <Map style={{ flex: 1 }} mapStyle={mapStyle}>
           <Camera initialViewState={{ center: [72.86, 19.12], zoom: 10.5 }} />
           <GeoJSONSource
@@ -109,13 +112,13 @@ export function MapPreview({
             />
           </GeoJSONSource>
         </Map>
-        <View style={{ position: 'absolute', top: 8, left: 8 }}><Badge label={selectedAreaName ? `${issues.length} ${selectedAreaName.toLowerCase()}` : `${issues.length} blurred reports`} color={theme.accent} /></View>
+        <View style={{ position: 'absolute', top: 8, left: 8 }}><Badge label={selectedAreaName ? `${issues.length} ${t('reports')} · ${selectedAreaName}` : `${issues.length} ${t('reports')}`} color={theme.accent} /></View>
       </View>
     );
   }
   return (
     <View
-      accessibilityLabel={`Privacy-safe map showing ${issues.length} blurred public report locations`}
+      accessibilityLabel={accessibility}
       style={{
         borderRadius: theme.radius.lg,
         overflow: 'hidden',
@@ -132,10 +135,10 @@ export function MapPreview({
         })}
       </Svg>
       <View style={{ position: 'absolute', top: 8, left: 8 }}>
-        <Badge label={`${issues.length} reports`} color={theme.accent} />
+        <Badge label={`${issues.length} ${t('reports')}`} color={theme.accent} />
       </View>
       <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
-        <Badge label="blurred public locations" color={theme.slate[500]} />
+        <Badge label={t('blurredPublicLocations')} color={theme.slate[500]} />
       </View>
     </View>
   );
@@ -289,8 +292,9 @@ export function MilestoneJourney({
   emptyTitle?: string;
   emptyBody?: string;
 }) {
+  const { t } = useI18n();
   if (items.length === 0) {
-    return <EmptyState icon="trail-sign" title={emptyTitle ?? 'No progress steps yet'} body={emptyBody ?? 'Delivery steps will appear here as work begins.'} />;
+    return <EmptyState icon="trail-sign" title={emptyTitle ?? t('noMilestonesTitle')} body={emptyBody ?? t('noMilestonesBody')} />;
   }
   const iconFor = (state: MilestoneJourneyItem['state']) =>
     state === 'complete' ? 'checkmark-circle' : state === 'current' ? 'radio-button-on' : state === 'disputed' ? 'alert-circle' : 'radio-button-off';
@@ -311,7 +315,7 @@ export function MilestoneJourney({
             </View>
             {item.value ? <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 1 }}>{item.value}</Text> : null}
             {item.evidenceUrl ? (
-              <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13, marginTop: 2 }}>{`${String.fromCharCode(0x1f517)} evidence`}</Text>
+              <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13, marginTop: 2 }}>{`${String.fromCharCode(0x1f517)} ${t('evidence')}`}</Text>
             ) : null}
           </View>
         </View>

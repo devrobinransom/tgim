@@ -28,7 +28,7 @@ export default function IssueDetailScreen() {
       reload();
       setMessage(t('confirmRecorded'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Support failed');
+      setMessage(error instanceof Error ? error.message : t('supportFailed'));
     }
   };
 
@@ -51,7 +51,7 @@ export default function IssueDetailScreen() {
               <Ionicons name="location" size={15} color={theme.textMuted} />
               <Text style={{ color: theme.textMuted, fontSize: 13 }}>
                 {issue.pincode_code ? `${issue.pincode_code} · ` : ''}
-                Pvt {String(issue.public_latitude).slice(0, 6)}, {String(issue.public_longitude).slice(0, 6)}
+                {t('pvt')} {String(issue.public_latitude).slice(0, 6)}, {String(issue.public_longitude).slice(0, 6)}
               </Text>
             </View>
           </View>
