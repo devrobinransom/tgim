@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { theme } from '../theme';
+import { Text } from './typography';
 
 /** Compact stat card used on the area dashboard (Mock 3 / Mock 8 bottom sheet). */
 export function StatCard({ value, label, accent }: { value: string; label: string; accent?: string }) {
@@ -15,8 +16,8 @@ export function StatCard({ value, label, accent }: { value: string; label: strin
         padding: theme.spacing.md,
       }}
     >
-      <Text style={{ fontSize: 22, fontWeight: '800', color: accent ?? theme.text }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: theme.textMuted, fontWeight: '600', marginTop: 2 }}>
+      <Text role="h1" color={accent ?? theme.text}>{value}</Text>
+      <Text role="small" color={theme.textMuted} style={{ marginTop: theme.spacing.xs }}>
         {label}
       </Text>
     </View>

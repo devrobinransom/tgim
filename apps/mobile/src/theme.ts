@@ -1,3 +1,4 @@
+import type { TextStyle } from 'react-native';
 import { tokens } from '@tgim/shared';
 
 /**
@@ -17,13 +18,36 @@ export const theme = {
   card: '#ffffff',
 } as const;
 
-export const font = {
-  body: 15,
-  label: 13,
-  small: 11,
-  h1: 28,
-  h2: 22,
-  h3: 17,
+/**
+ * Semantic type scale. Every text on a consumer surface renders through one of
+ * these roles — screens must not hardcode fontSize/fontWeight. Weights come
+ * from the shared typography tokens; line heights are tuned per role.
+ */
+export type FontRole =
+  | 'logo' // brand mark (TG•M)
+  | 'display' // full-screen value statements
+  | 'h1' // screen titles
+  | 'h2' // section titles
+  | 'h3' // card titles
+  | 'body' // default prose
+  | 'bodyStrong' // emphasised prose / list titles
+  | 'label' // labels, hints, button text
+  | 'small' // captions, meta
+  | 'caption' // tiny meta, tab labels
+  | 'micro'; // brand tagline
+
+export const fontScale: Record<FontRole, { fontSize: number; fontWeight: TextStyle['fontWeight']; lineHeight: number }> = {
+  logo: { fontSize: 26, fontWeight: tokens.typography.weight.logo, lineHeight: 32 },
+  display: { fontSize: 24, fontWeight: tokens.typography.weight.emphasis, lineHeight: 31 },
+  h1: { fontSize: 22, fontWeight: tokens.typography.weight.emphasis, lineHeight: 29 },
+  h2: { fontSize: 18, fontWeight: tokens.typography.weight.heading, lineHeight: 24 },
+  h3: { fontSize: 16, fontWeight: tokens.typography.weight.heading, lineHeight: 22 },
+  body: { fontSize: 15, fontWeight: tokens.typography.weight.body, lineHeight: 22 },
+  bodyStrong: { fontSize: 15, fontWeight: tokens.typography.weight.label, lineHeight: 22 },
+  label: { fontSize: 13, fontWeight: tokens.typography.weight.label, lineHeight: 18 },
+  small: { fontSize: 12, fontWeight: tokens.typography.weight.label, lineHeight: 16 },
+  caption: { fontSize: 11, fontWeight: tokens.typography.weight.label, lineHeight: 14 },
+  micro: { fontSize: 10, fontWeight: tokens.typography.weight.emphasis, lineHeight: 13 },
 } as const;
 
 /** Shared card style used across screens. */

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import type { PublicIssue, IssueCategory, PromiseStatus } from '@tgim/shared';
@@ -9,6 +9,7 @@ import { theme } from '../theme';
 import { useI18n } from '../i18n';
 import { Badge } from './Badge';
 import { Sparkline } from './Sparkline';
+import { Text } from './typography';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 
 const BBOX = { minLat: 19.0, maxLat: 19.3, minLng: 72.8, maxLng: 72.98 };
@@ -32,24 +33,24 @@ export function Screen({ children }: { children: ReactNode }) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.bg }}
-      contentContainerStyle={{ padding: theme.spacing.lg, paddingTop: insets.top + 12, gap: 16 }}
+      contentContainerStyle={{ padding: theme.spacing.lg, paddingTop: insets.top + theme.spacing.md, gap: theme.spacing.lg }}
     >
       {children}
-      <View style={{ height: insets.bottom + 8 }} />
+      <View style={{ height: insets.bottom + theme.spacing.sm }} />
     </ScrollView>
   );
 }
 
 export function TopBar({ title, subtitle, right }: { title: ReactNode; subtitle?: string; right?: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
       <View style={{ flex: 1 }}>
         {typeof title === 'string' ? (
-          <Text style={{ fontSize: 22, fontWeight: '900', color: theme.text }}>{title}</Text>
+          <Text role="h1" color={theme.text}>{title}</Text>
         ) : (
           title
         )}
-        {subtitle && <Text style={{ color: theme.textMuted, marginTop: 2 }}>{subtitle}</Text>}
+        {subtitle && <Text role="label" color={theme.textMuted} style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text>}
       </View>
       {right}
     </View>
@@ -62,17 +63,17 @@ export function SearchSurface({ label }: { label: string }) {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: theme.spacing.sm,
         backgroundColor: theme.card,
         borderRadius: theme.radius.md,
         borderWidth: 1,
         borderColor: theme.border,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.md,
       }}
     >
       <Ionicons name="search" size={18} color={theme.textMuted} />
-      <Text style={{ color: theme.textMuted }}>{label}</Text>
+      <Text role="label" color={theme.textMuted}>{label}</Text>
     </View>
   );
 }
@@ -112,7 +113,7 @@ export function MapPreview({
             />
           </GeoJSONSource>
         </Map>
-        <View style={{ position: 'absolute', top: 8, left: 8 }}><Badge label={selectedAreaName ? `${issues.length} ${t('reports')} · ${selectedAreaName}` : `${issues.length} ${t('reports')}`} color={theme.accent} /></View>
+        <View style={{ position: 'absolute', top: theme.spacing.sm, left: theme.spacing.sm }}><Badge label={selectedAreaName ? `${issues.length} ${t('reports')} · ${selectedAreaName}` : `${issues.length} ${t('reports')}`} color={theme.accent} /></View>
       </View>
     );
   }
@@ -134,10 +135,10 @@ export function MapPreview({
           return <Circle key={issue.id} cx={x} cy={y} r={7} fill={color} fillOpacity={0.85} stroke="#fff" strokeWidth={1.5} />;
         })}
       </Svg>
-      <View style={{ position: 'absolute', top: 8, left: 8 }}>
+      <View style={{ position: 'absolute', top: theme.spacing.sm, left: theme.spacing.sm }}>
         <Badge label={`${issues.length} ${t('reports')}`} color={theme.accent} />
       </View>
-      <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
+      <View style={{ position: 'absolute', right: theme.spacing.sm, bottom: theme.spacing.sm }}>
         <Badge label={t('blurredPublicLocations')} color={theme.slate[500]} />
       </View>
     </View>
@@ -165,7 +166,7 @@ export function IssueCard({
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: theme.spacing.md,
         backgroundColor: theme.card,
         borderRadius: theme.radius.lg,
         borderWidth: 1,
@@ -174,24 +175,24 @@ export function IssueCard({
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View style={{ flex: 1, gap: 6 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flex: 1, gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <Badge label={issue.category} color={color} />
-          {issue.pincode_code ? <Text style={{ color: theme.textMuted, fontSize: 11 }}>{issue.pincode_code}</Text> : null}
+          {issue.pincode_code ? <Text role="caption" color={theme.textMuted}>{issue.pincode_code}</Text> : null}
         </View>
-        <Text numberOfLines={2} style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>
+        <Text role="bodyStrong" numberOfLines={2} color={theme.text}>
           {issue.description}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           {locality ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
               <Ionicons name="location" size={13} color={theme.textMuted} />
-              <Text style={{ color: theme.textMuted, fontSize: 12 }}>{locality}</Text>
+              <Text role="small" color={theme.textMuted}>{locality}</Text>
             </View>
           ) : null}
-          <Text style={{ color: theme.textMuted, fontSize: 12 }}>{issue.status.replace(/_/g, ' ')}</Text>
+          <Text role="small" color={theme.textMuted}>{issue.status.replace(/_/g, ' ')}</Text>
         </View>
-        {actionLabel ? <Text style={{ color, fontWeight: '700', fontSize: 13 }}>{actionLabel}</Text> : null}
+        {actionLabel ? <Text role="label" color={color}>{actionLabel}</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={theme.slate[400]} />
     </Pressable>
@@ -210,10 +211,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.xl, gap: 10, alignItems: 'center' }}>
+    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.xl, gap: theme.spacing.md, alignItems: 'center' }}>
       <Ionicons name={icon} size={32} color={theme.accent} />
-      <Text style={{ color: theme.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{title}</Text>
-      <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>{body}</Text>
+      <Text role="h3" color={theme.text} center>{title}</Text>
+      <Text role="label" color={theme.textMuted} center>{body}</Text>
       {action}
     </View>
   );
@@ -221,10 +222,10 @@ export function EmptyState({
 
 export function SectionHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.md }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: theme.text }}>{title}</Text>
-        {subtitle ? <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 1 }}>{subtitle}</Text> : null}
+        <Text role="h2" color={theme.text}>{title}</Text>
+        {subtitle ? <Text role="label" color={theme.textMuted} style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text> : null}
       </View>
       {right}
     </View>
@@ -243,7 +244,7 @@ export function CategoryShortcuts({
   allowClear?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
       {categories.map((item) => {
         const active = selected === item.key;
         const color = tokens.categoryColor[item.key as IssueCategory] ?? theme.accent;
@@ -256,9 +257,9 @@ export function CategoryShortcuts({
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
+              gap: theme.spacing.sm,
+              paddingHorizontal: theme.spacing.md,
+              paddingVertical: theme.spacing.sm,
               borderRadius: theme.radius.pill,
               borderWidth: 1,
               borderColor: active ? color : theme.border,
@@ -266,7 +267,7 @@ export function CategoryShortcuts({
             }}
           >
             <Ionicons name={item.icon} size={16} color={active ? color : theme.textMuted} />
-            <Text style={{ color: active ? color : theme.text, fontWeight: '700', fontSize: 13 }}>{item.label}</Text>
+            <Text role="label" color={active ? color : theme.text}>{item.label}</Text>
           </Pressable>
         );
       })}
@@ -303,19 +304,19 @@ export function MilestoneJourney({
   return (
     <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 0 }}>
       {items.map((item, index) => (
-        <View key={`${item.label}-${index}`} style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ alignItems: 'center', gap: 2 }}>
+        <View key={`${item.label}-${index}`} style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
             <Ionicons name={iconFor(item.state)} size={20} color={colorFor(item.state)} />
             {index < items.length - 1 ? <View style={{ width: 2, flex: 1, minHeight: 18, backgroundColor: item.state === 'complete' ? theme.palette.success : theme.slate[200] }} /> : null}
           </View>
-          <View style={{ flex: 1, paddingBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>{item.label}</Text>
-              {item.date ? <Text style={{ color: theme.textMuted, fontSize: 11 }}>{item.date}</Text> : null}
+          <View style={{ flex: 1, paddingBottom: theme.spacing.lg }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: theme.spacing.sm }}>
+              <Text role="bodyStrong" color={theme.text}>{item.label}</Text>
+              {item.date ? <Text role="caption" color={theme.textMuted}>{item.date}</Text> : null}
             </View>
-            {item.value ? <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 1 }}>{item.value}</Text> : null}
+            {item.value ? <Text role="label" color={theme.textMuted} style={{ marginTop: theme.spacing.xs }}>{item.value}</Text> : null}
             {item.evidenceUrl ? (
-              <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13, marginTop: 2 }}>{`${String.fromCharCode(0x1f517)} ${t('evidence')}`}</Text>
+              <Text role="label" color={theme.accent} style={{ marginTop: theme.spacing.xs }}>{`${String.fromCharCode(0x1f517)} ${t('evidence')}`}</Text>
             ) : null}
           </View>
         </View>
@@ -332,7 +333,7 @@ export function QueueCard({ issue, onPress }: { issue: PublicIssue; onPress: () 
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: theme.spacing.md,
         backgroundColor: theme.card,
         borderRadius: theme.radius.lg,
         borderWidth: 1,
@@ -340,12 +341,12 @@ export function QueueCard({ issue, onPress }: { issue: PublicIssue; onPress: () 
         padding: theme.spacing.md,
       }}
     >
-      <View style={{ flex: 1, gap: 6 }}>
+      <View style={{ flex: 1, gap: theme.spacing.sm }}>
         <Badge label={issue.category} color={color} />
-        <Text numberOfLines={2} style={{ color: theme.text, fontWeight: '600' }}>
+        <Text role="bodyStrong" numberOfLines={2} color={theme.text}>
           {issue.description}
         </Text>
-        <Text style={{ color: theme.textMuted, fontSize: 12 }}>
+        <Text role="small" color={theme.textMuted}>
           {issue.privacy} location / {issue.status}
         </Text>
       </View>
@@ -362,13 +363,13 @@ export function StatusChip({ status }: { status: PromiseStatus | string }) {
 
 export function NativeTimeline({ items }: { items: { label: string; value: string }[] }) {
   return (
-    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 12 }}>
+    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: theme.spacing.md }}>
       {items.map((item) => (
-        <View key={`${item.label}-${item.value}`} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.accent, marginTop: 6 }} />
+        <View key={`${item.label}-${item.value}`} style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'flex-start' }}>
+          <View style={{ width: 8, height: 8, borderRadius: theme.radius.pill, backgroundColor: theme.accent, marginTop: theme.spacing.sm }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '800' }}>{item.value}</Text>
-            <Text style={{ color: theme.text, fontWeight: '700' }}>{item.label}</Text>
+            <Text role="small" color={theme.textMuted}>{item.value}</Text>
+            <Text role="bodyStrong" color={theme.text}>{item.label}</Text>
           </View>
         </View>
       ))}

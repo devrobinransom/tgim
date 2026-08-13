@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { theme } from '../../src/theme';
+import { fontScale, theme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
 
 /**
@@ -19,7 +19,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.slate[400],
         tabBarStyle: { borderTopColor: theme.border, backgroundColor: theme.card },
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 11 },
+        tabBarLabelStyle: { fontWeight: fontScale.caption.fontWeight, fontSize: fontScale.caption.fontSize },
       }}
     >
       <Tabs.Screen

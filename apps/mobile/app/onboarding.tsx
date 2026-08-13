@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../src/components/Button';
+import { Text } from '../src/components/typography';
 import { ACTIVE_AREA_ID, ACTIVE_AREA_NAME, INTEREST_CATEGORIES, LANGUAGES } from '../src/config';
 import { useI18n } from '../src/i18n';
 import { api } from '../src/api';
@@ -54,18 +55,18 @@ export default function Onboarding() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.bg }}
-      contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: insets.top + 24, gap: 24 }}
+      contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: insets.top + theme.spacing.xl, gap: theme.spacing.xl }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text, letterSpacing: 0.5 }}>
-            TG<Text style={{ color: theme.accent }}>•</Text>M
+          <Text role="logo" color={theme.text} style={{ letterSpacing: 0.5 }}>
+            TG<Text color={theme.accent}>•</Text>M
           </Text>
-          <Text style={{ fontSize: 10, letterSpacing: 2, fontWeight: '800', color: theme.textMuted, marginTop: 2 }}>
+          <Text role="micro" color={theme.textMuted} style={{ letterSpacing: 2, marginTop: theme.spacing.xs }}>
             THE GREAT INDIAN MANIFESTO
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           {LANGUAGES.map((l) => {
             const active = language === l.code;
             return (
@@ -75,15 +76,15 @@ export default function Onboarding() {
                 accessibilityRole="button"
                 accessibilityLabel={l.label}
                 style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
+                  paddingHorizontal: theme.spacing.md,
+                  paddingVertical: theme.spacing.sm,
                   borderRadius: theme.radius.pill,
                   borderWidth: 1,
                   borderColor: active ? theme.accent : theme.border,
                   backgroundColor: active ? theme.accent : theme.card,
                 }}
               >
-                <Text style={{ color: active ? '#fff' : theme.text, fontWeight: '600', fontSize: 12 }}>{l.label}</Text>
+                <Text role="small" color={active ? '#fff' : theme.text}>{l.label}</Text>
               </Pressable>
             );
           })}
@@ -91,7 +92,7 @@ export default function Onboarding() {
       </View>
 
       {/* Step indicator */}
-      <View style={{ flexDirection: 'row', gap: 6 }}>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         {[0, 1, 2].map((i) => (
           <View
             key={i}
@@ -107,18 +108,18 @@ export default function Onboarding() {
 
       {step === 0 && (
         <>
-          <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, lineHeight: 31 }}>
+          <Text role="display" color={theme.text}>
             {t('valueStatement')}
           </Text>
-          <Text style={{ color: theme.textMuted }}>{t('whatsHappeningNearYou')}</Text>
+          <Text role="body" color={theme.textMuted}>{t('whatsHappeningNearYou')}</Text>
         </>
       )}
 
       {step === 1 && (
         <>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text }}>{t('whereDoYouLive')}</Text>
-          <Text style={{ color: theme.textMuted }}>{t('whereDoYouLiveBody')}</Text>
-          <View style={{ gap: 8 }}>
+          <Text role="h1" color={theme.text}>{t('whereDoYouLive')}</Text>
+          <Text role="body" color={theme.textMuted}>{t('whereDoYouLiveBody')}</Text>
+          <View style={{ gap: theme.spacing.sm }}>
             {localities.map((area) => {
               const active = (selectedArea?.id ?? ACTIVE_AREA_ID) === area.id;
               return (
@@ -138,18 +139,18 @@ export default function Onboarding() {
                     padding: theme.spacing.lg,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
                     <Ionicons name="location" size={18} color={active ? theme.accent : theme.textMuted} />
                     <View>
-                      <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{area.name}</Text>
-                      <Text style={{ color: theme.textMuted, fontSize: 12 }}>{t('locality')}</Text>
+                      <Text role="h3" color={theme.text}>{area.name}</Text>
+                      <Text role="small" color={theme.textMuted}>{t('locality')}</Text>
                     </View>
                   </View>
                   <View
                     style={{
                       width: 22,
                       height: 22,
-                      borderRadius: 11,
+                      borderRadius: theme.radius.pill,
                       borderWidth: 2,
                       borderColor: active ? theme.accent : theme.border,
                       backgroundColor: active ? theme.accent : 'transparent',
@@ -164,9 +165,9 @@ export default function Onboarding() {
 
       {step === 2 && (
         <>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text }}>{t('whatMattersToYou')}</Text>
-          <Text style={{ color: theme.textMuted }}>{t('whatMattersToYouBody')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <Text role="h1" color={theme.text}>{t('whatMattersToYou')}</Text>
+          <Text role="body" color={theme.textMuted}>{t('whatMattersToYouBody')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {INTEREST_CATEGORIES.map((item) => {
               const active = selectedInterests.includes(item.key);
               return (
@@ -178,9 +179,9 @@ export default function Onboarding() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
+                    gap: theme.spacing.xs,
+                    paddingHorizontal: theme.spacing.md,
+                    paddingVertical: theme.spacing.md,
                     borderRadius: theme.radius.pill,
                     borderWidth: 1,
                     borderColor: active ? theme.accent : theme.border,
@@ -188,7 +189,7 @@ export default function Onboarding() {
                   }}
                 >
                   <Ionicons name="checkmark-circle" size={16} color={active ? theme.accent : theme.textMuted} />
-                  <Text style={{ color: active ? theme.accent : theme.text, fontWeight: '700', fontSize: 14 }}>{item.label}</Text>
+                  <Text role="bodyStrong" color={active ? theme.accent : theme.text}>{item.label}</Text>
                 </Pressable>
               );
             })}
@@ -196,7 +197,7 @@ export default function Onboarding() {
         </>
       )}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: theme.spacing.md }}>
         {step < 2 ? (
           <Button label={t('next')} onPress={() => setStep(step + 1)} />
         ) : (
@@ -206,7 +207,7 @@ export default function Onboarding() {
           <Button label={t('back')} variant="secondary" onPress={() => setStep(step - 1)} />
         )}
       </View>
-      <View style={{ height: insets.bottom + 12 }} />
+      <View style={{ height: insets.bottom + theme.spacing.md }} />
     </ScrollView>
   );
 }

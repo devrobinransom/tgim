@@ -1,6 +1,7 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { theme } from '../theme';
+import { Text } from './typography';
 
 /** Circular priority-score gauge (the 86/100 ring from Mock 1). 0–100. */
 export function PriorityGauge({ score, size = 96 }: { score: number; size?: number }) {
@@ -37,8 +38,8 @@ export function PriorityGauge({ score, size = 96 }: { score: number; size?: numb
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text }}>{Math.round(clamped)}</Text>
-      <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '600' }}>/ 100</Text>
+      <Text role="display" color={theme.text}>{Math.round(clamped)}</Text>
+      <Text role="micro" color={theme.textMuted}>/ 100</Text>
     </View>
   );
 }

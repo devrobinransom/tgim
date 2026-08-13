@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { PartyPromise } from '@tgim/shared';
 import { useActiveArea } from '../../src/area';
 import { useI18n, MessageKey } from '../../src/i18n';
 import { Badge } from '../../src/components/Badge';
 import { ConnectionBadge } from '../../src/components/ConnectionBadge';
 import { EmptyState, Screen, SectionHeader, TopBar } from '../../src/components/ProductPrimitives';
+import { Text } from '../../src/components/typography';
 import { Button } from '../../src/components/Button';
 import { api } from '../../src/api';
 import { useFetch } from '../../src/hooks/useFetch';
@@ -57,12 +58,12 @@ export default function PromisesScreen() {
         <EmptyState icon="document-text" title={t('noManifestoYetTitle')} body={t('noManifestoYetBody')} />
       ) : (
         priorities.map((promise) => (
-          <View key={promise.id} style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 8 }}>
+          <View key={promise.id} style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: theme.spacing.sm }}>
             <Badge label={promise.time_horizon} color={theme.accent} />
-            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '800' }}>{promise.title}</Text>
-            <Text style={{ color: theme.textMuted }}>{promise.description}</Text>
+            <Text role="h3" color={theme.text}>{promise.title}</Text>
+            <Text role="body" color={theme.textMuted}>{promise.description}</Text>
             {promise.target_metric ? (
-              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13 }}>{`${t('target')}: ${promise.target_metric}`}</Text>
+              <Text role="label" color={theme.text}>{`${t('target')}: ${promise.target_metric}`}</Text>
             ) : null}
           </View>
         ))
@@ -73,8 +74,8 @@ export default function PromisesScreen() {
         <EmptyState icon="checkmark-done-circle" title={t('noAdoptedYet')} body={t('noAdoptedYetBody')} />
       ) : (
         byStatus.map((group) => (
-          <View key={group.status} style={{ gap: 10 }}>
-            <Text style={{ color: group.status === 'delayed' ? theme.palette.danger : theme.text, fontWeight: '800', fontSize: 13 }}>
+          <View key={group.status} style={{ gap: theme.spacing.md }}>
+            <Text role="label" color={group.status === 'delayed' ? theme.palette.danger : theme.text}>
               {t(statusKey(group.status))}
             </Text>
             {group.items.map((promise) => (
@@ -103,18 +104,18 @@ function PromiseCard({ promise, onPress }: { promise: PartyPromise; onPress: () 
         borderWidth: 1,
         borderColor: theme.border,
         padding: theme.spacing.lg,
-        gap: 8,
+        gap: theme.spacing.sm,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
         <Badge label={promise.status.replace(/_/g, ' ')} color={statusColor(promise.status)} />
-        <Text style={{ color: theme.textMuted, fontSize: 11 }}>{promise.timeline ? new Date(promise.timeline).toLocaleDateString() : ''}</Text>
+        <Text role="caption" color={theme.textMuted}>{promise.timeline ? new Date(promise.timeline).toLocaleDateString() : ''}</Text>
       </View>
-      <Text style={{ color: theme.text, fontSize: 16, fontWeight: '800' }}>{promise.adopted_title}</Text>
-      <Text numberOfLines={3} style={{ color: theme.textMuted }}>{promise.adopted_description}</Text>
-      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+      <Text role="h3" color={theme.text}>{promise.adopted_title}</Text>
+      <Text role="body" numberOfLines={3} color={theme.textMuted}>{promise.adopted_description}</Text>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.xs, alignItems: 'center' }}>
         <Ionicons name="trail-sign" size={16} color={theme.accent} />
-        <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13 }}>{t('viewDelivery')}</Text>
+        <Text role="label" color={theme.accent}>{t('viewDelivery')}</Text>
       </View>
     </View>
   );

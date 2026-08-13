@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { PromiseAccountabilityRecord, PromiseMilestone, PromiseOutcomeScore } from '@tgim/shared';
 import { useI18n } from '../../src/i18n';
 import { Button } from '../../src/components/Button';
+import { Text } from '../../src/components/typography';
 import { EmptyState, MilestoneJourney, Screen, StatusChip, TopBar } from '../../src/components/ProductPrimitives';
 import { api } from '../../src/api';
 import { useFetch } from '../../src/hooks/useFetch';
@@ -35,7 +36,7 @@ export default function PromiseDetailScreen() {
         <Button label={t('back')} variant="secondary" onPress={() => router.back()} />
       } />
 
-      {loading && <Text style={{ color: theme.textMuted }}>{t('loading')}</Text>}
+      {loading && <Text role="body" color={theme.textMuted}>{t('loading')}</Text>}
       {!loading && !record && (
         <EmptyState icon="trail-sign" title={t('noDeliverableYet')} body={t('noAdoptedYetBody')} />
       )}
@@ -43,10 +44,10 @@ export default function PromiseDetailScreen() {
       {record && (
         <>
           <StatusChip status={record.promise.status} />
-          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800' }}>{record.promise.adopted_title}</Text>
-          <Text style={{ color: theme.textMuted }}>{record.promise.adopted_description}</Text>
+          <Text role="h2" color={theme.text}>{record.promise.adopted_title}</Text>
+          <Text role="body" color={theme.textMuted}>{record.promise.adopted_description}</Text>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             <MetaPill icon="flag" label={`${t('due')}: ${record.promise.timeline ? new Date(record.promise.timeline).toLocaleDateString() : '—'}`} />
             {record.promise.owner_department ? <MetaPill icon="business" label={record.promise.owner_department} /> : null}
             {record.promise.target_metric ? <MetaPill icon="stats-chart" label={record.promise.target_metric} /> : null}
@@ -63,8 +64,8 @@ export default function PromiseDetailScreen() {
 
           {/* Citizen verdict */}
           {verdictCounts && Object.values(verdictCounts).some((count) => count > 0) && (
-            <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 10 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>{t('citizenVerdict')}</Text>
+            <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: theme.spacing.md }}>
+              <Text role="h3" color={theme.text}>{t('citizenVerdict')}</Text>
               <VerdictBar label={t('verdictDelivered')} count={verdictCounts.delivered} total={totalVerdicts(verdictCounts)} color={theme.palette.success} responsesLabel={t('verdictResponses')} />
               <VerdictBar label={t('verdictPartly')} count={verdictCounts.partly_delivered} total={totalVerdicts(verdictCounts)} color={theme.palette.info} responsesLabel={t('verdictResponses')} />
               <VerdictBar label={t('verdictNotDelivered')} count={verdictCounts.not_delivered} total={totalVerdicts(verdictCounts)} color={theme.palette.danger} responsesLabel={t('verdictResponses')} />
@@ -101,18 +102,18 @@ function buildJourney(record: PromiseAccountabilityRecord | null) {
 
 function MetaPill({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, borderRadius: theme.radius.pill, paddingHorizontal: 10, paddingVertical: 5 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs }}>
       <Ionicons name={icon} size={13} color={theme.textMuted} />
-      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>{label}</Text>
+      <Text role="small" color={theme.text}>{label}</Text>
     </View>
   );
 }
 
 function Note({ color, icon, text }: { color: string; icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: color + '14', borderColor: color, borderWidth: 1, borderRadius: theme.radius.md, padding: 10 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: color + '14', borderColor: color, borderWidth: 1, borderRadius: theme.radius.md, padding: theme.spacing.md }}>
       <Ionicons name={icon} size={16} color={color} />
-      <Text style={{ color, fontWeight: '600', fontSize: 13, flex: 1 }}>{text}</Text>
+      <Text role="label" color={color} style={{ flex: 1 }}>{text}</Text>
     </View>
   );
 }
@@ -124,12 +125,12 @@ function totalVerdicts(counts: PromiseOutcomeScore['verdict_counts']): number {
 function VerdictBar({ label, count, total, color, responsesLabel }: { label: string; count: number; total: number; color: string; responsesLabel: string }) {
   const percent = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
-    <View style={{ gap: 4 }}>
+    <View style={{ gap: theme.spacing.xs }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ color: theme.text, fontSize: 13 }}>{label}</Text>
-        <Text style={{ color: theme.textMuted, fontSize: 13 }}>{`${count} ${responsesLabel}`}</Text>
+        <Text role="label" color={theme.text}>{label}</Text>
+        <Text role="label" color={theme.textMuted}>{`${count} ${responsesLabel}`}</Text>
       </View>
-      <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.slate[100], overflow: 'hidden' }}>
+      <View style={{ height: 6, borderRadius: theme.radius.pill, backgroundColor: theme.slate[100], overflow: 'hidden' }}>
         <View style={{ width: `${percent}%`, height: '100%', backgroundColor: color }} />
       </View>
     </View>

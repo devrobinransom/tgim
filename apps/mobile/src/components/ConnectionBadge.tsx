@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { api } from '../api';
 import { theme } from '../theme';
+import { Text } from './typography';
 
 /** Live connection + persistence-mode badge (mirrors the web sim's status pill). */
 export function ConnectionBadge() {
@@ -35,9 +36,9 @@ export function ConnectionBadge() {
   }[state];
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: map.color }} />
-      <Text style={{ fontSize: 11, color: theme.textMuted, fontWeight: '600' }}>{map.label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+      <View style={{ width: 8, height: 8, borderRadius: theme.radius.pill, backgroundColor: map.color }} />
+      <Text role="caption" color={theme.textMuted}>{map.label}</Text>
     </View>
   );
 }

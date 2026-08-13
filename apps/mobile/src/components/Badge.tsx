@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { theme } from '../theme';
+import { Text } from './typography';
 
 /** Pill badge (the .glow-badge primitive). Pass a tint color; text/bg derive from it. */
 export function Badge({
@@ -16,18 +17,18 @@ export function Badge({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: theme.spacing.xs,
         alignSelf: 'flex-start',
         backgroundColor: color + '1A', // ~10% tint
         borderColor: color + '40',
         borderWidth: 1,
         borderRadius: theme.radius.pill,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.xs,
       }}
     >
       {icon}
-      <Text style={{ color, fontWeight: '700', fontSize: 12 }}>{label}</Text>
+      <Text role="small" color={color}>{label}</Text>
     </View>
   );
 }

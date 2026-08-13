@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useActiveArea } from '../../src/area';
 import { useI18n } from '../../src/i18n';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { ConnectionBadge } from '../../src/components/ConnectionBadge';
 import { CategoryShortcuts, EmptyState, IssueCard, MapPreview, Screen, SectionHeader, TopBar } from '../../src/components/ProductPrimitives';
+import { Text } from '../../src/components/typography';
 import { INTEREST_CATEGORIES } from '../../src/config';
 import { api } from '../../src/api';
 import { useFetch } from '../../src/hooks/useFetch';
@@ -45,8 +46,8 @@ export default function HomeScreen() {
     <Screen>
       <TopBar
         title={(
-          <Text style={{ fontSize: 22, fontWeight: '900', color: theme.text }}>
-            TG<Text style={{ color: theme.accent }}>•</Text>M
+          <Text role="logo" color={theme.text}>
+            TG<Text color={theme.accent}>•</Text>M
           </Text>
         )}
         subtitle={areaName}
@@ -68,7 +69,7 @@ export default function HomeScreen() {
 
       {/* Area snapshot */}
       <SectionHeader title={t('areaSnapshot')} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
         <SnapshotPill label={snapshotLoading ? '—' : String(areaSummary?.report_count ?? 0)} value={t('nearYou')} />
         <SnapshotPill label={String(categoryCounts.size)} value={t('categories')} />
         <SnapshotPill label={String(topMaybe.length)} value={t('inFocus')} />
@@ -101,9 +102,9 @@ export default function HomeScreen() {
 
 function SnapshotPill({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flex: 1, minWidth: 90, backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.md, gap: 2 }}>
-      <Text style={{ fontSize: 20, fontWeight: '900', color: theme.text }}>{label}</Text>
-      <Text style={{ color: theme.textMuted, fontSize: 11 }}>{value}</Text>
+    <View style={{ flex: 1, minWidth: 90, backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.md, gap: theme.spacing.xs }}>
+      <Text role="h1" color={theme.text}>{label}</Text>
+      <Text role="caption" color={theme.textMuted}>{value}</Text>
     </View>
   );
 }

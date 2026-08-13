@@ -4,7 +4,7 @@ import { useState } from 'react';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { requestRecordingPermissionsAsync, RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { IssueCategory, IssueSeverity, PrivacyLevel } from '@tgim/shared';
 import { tokens } from '@tgim/shared';
@@ -12,10 +12,11 @@ import { useI18n } from '../../src/i18n';
 import { transcribeRecording } from '../../src/ai';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
+import { Text } from '../../src/components/typography';
 import { ACTIVE_AREA_NAME } from '../../src/config';
 import { enqueueDraft, sync, useDraftQueue, type EvidenceReference } from '../../src/store/draftQueue';
 import { useSession } from '../../src/store/session';
-import { theme } from '../../src/theme';
+import { fontScale, theme } from '../../src/theme';
 
 const CATEGORIES: IssueCategory[] = [
   'water',
@@ -144,10 +145,10 @@ export default function ReportWizard() {
 
   if (result) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.bg, padding: 24, paddingTop: insets.top + 24, gap: 20 }}>
+      <View style={{ flex: 1, backgroundColor: theme.bg, padding: theme.spacing.xl, paddingTop: insets.top + theme.spacing.xl, gap: theme.spacing.lg }}>
         <Ionicons name="checkmark-circle" size={56} color={theme.palette.success} />
-        <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text }}>{result}</Text>
-        <Text style={{ color: theme.textMuted }}>
+        <Text role="h1" color={theme.text}>{result}</Text>
+        <Text role="body" color={theme.textMuted}>
           {pendingCount > 0 ? `${pendingCount} ${t('queued')}` : result}
         </Text>
         <Button label={t('reportAnother')} onPress={reset} />
@@ -159,34 +160,34 @@ export default function ReportWizard() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.bg }}
-      contentContainerStyle={{ padding: theme.spacing.lg, paddingTop: insets.top + 12, gap: 18 }}
+      contentContainerStyle={{ padding: theme.spacing.lg, paddingTop: insets.top + theme.spacing.md, gap: theme.spacing.lg }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text }}>{t('pinAProblem')}</Text>
+        <Text role="h1" color={theme.text}>{t('pinAProblem')}</Text>
         {pendingCount > 0 && <Badge label={`${pendingCount} ${t('queued')}`} color={theme.palette.warning} />}
       </View>
-      <Text style={{ color: theme.textMuted }}>{`${t('step')} ${step + 1} ${t('of')} ${TOTAL}`}</Text>
+      <Text role="body" color={theme.textMuted}>{`${t('step')} ${step + 1} ${t('of')} ${TOTAL}`}</Text>
 
       <View style={{ height: 6, backgroundColor: theme.slate[200], borderRadius: 3 }}>
         <View style={{ height: 6, width: `${((step + 1) / TOTAL) * 100}%`, backgroundColor: theme.accent, borderRadius: 3 }} />
       </View>
 
       {step === 0 && (
-        <View style={{ gap: 12 }}>
-          <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('location')}</Text>
-          <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 6 }}>
-            <Text style={{ color: theme.text, fontWeight: '700' }}>📍 {ACTIVE_AREA_NAME}</Text>
-            <Text style={{ color: theme.textMuted, fontSize: 13 }}>{t('locationPrivacynote')}</Text>
+        <View style={{ gap: theme.spacing.md }}>
+          <Text role="h3" color={theme.text}>{t('location')}</Text>
+          <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: theme.spacing.sm }}>
+            <Text role="bodyStrong" color={theme.text}>📍 {ACTIVE_AREA_NAME}</Text>
+            <Text role="label" color={theme.textMuted}>{t('locationPrivacynote')}</Text>
             <Button label={t('useCurrentLocation')} variant="secondary" onPress={() => void captureCurrentLocation()} />
-            <Text selectable style={{ color: theme.textMuted, fontSize: 12 }}>{locationMessage}</Text>
+            <Text role="small" selectable color={theme.textMuted}>{locationMessage}</Text>
           </View>
         </View>
       )}
 
       {step === 1 && (
-        <View style={{ gap: 12 }}>
-          <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('category')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        <View style={{ gap: theme.spacing.md }}>
+          <Text role="h3" color={theme.text}>{t('category')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
             {CATEGORIES.map((c) => {
               const active = category === c;
               const color = tokens.categoryColor[c];
@@ -201,7 +202,7 @@ export default function ReportWizard() {
                     aspectRatio: 1,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6,
+                    gap: theme.spacing.sm,
                     borderRadius: theme.radius.lg,
                     borderWidth: 1.5,
                     borderColor: active ? color : theme.border,
@@ -209,7 +210,7 @@ export default function ReportWizard() {
                   }}
                 >
                   <Ionicons name={CATEGORY_ICON[c]} size={26} color={color} />
-                  <Text style={{ fontSize: 12, color: theme.text, fontWeight: '600', textTransform: 'capitalize' }}>{c}</Text>
+                  <Text role="small" color={theme.text} style={{ textTransform: 'capitalize' }}>{c}</Text>
                 </Pressable>
               );
             })}
@@ -218,8 +219,8 @@ export default function ReportWizard() {
       )}
 
       {step === 2 && (
-        <View style={{ gap: 12 }}>
-          <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('description')}</Text>
+        <View style={{ gap: theme.spacing.md }}>
+          <Text role="h3" color={theme.text}>{t('description')}</Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
@@ -235,18 +236,19 @@ export default function ReportWizard() {
               padding: theme.spacing.lg,
               minHeight: 110,
               color: theme.text,
+              fontSize: fontScale.body.fontSize,
               textAlignVertical: 'top',
             }}
           />
-          <Text style={{ color: theme.textMuted, fontSize: 12 }}>{description.trim().length} / 2000</Text>
+          <Text role="small" color={theme.textMuted}>{description.trim().length} / 2000</Text>
           <VoiceRecorder onTranscript={(text) => setDescription((current) => (current.trim() ? `${current.trim()} ${text}` : text))} />
         </View>
       )}
 
       {step === 3 && (
-        <View style={{ gap: 14 }}>
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('seriousness')}</Text>
+        <View style={{ gap: theme.spacing.lg }}>
+          <View style={{ gap: theme.spacing.md }}>
+            <Text role="h3" color={theme.text}>{t('seriousness')}</Text>
             {SEVERITIES.map((s) => {
               const active = severity === s;
               const color = tokens.severityToScale[s].color;
@@ -257,25 +259,25 @@ export default function ReportWizard() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md,
                     borderRadius: theme.radius.md, borderWidth: 1.5,
                     borderColor: active ? color : theme.border,
                     backgroundColor: active ? color + '14' : theme.card,
                     padding: theme.spacing.lg,
                   }}
                 >
-                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color }} />
+                  <View style={{ width: 14, height: 14, borderRadius: theme.radius.pill, backgroundColor: color }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontWeight: '600', textTransform: 'capitalize' }}>{s}</Text>
-                    <Text style={{ color: theme.textMuted, fontSize: 12 }}>{severityHint(t, s)}</Text>
+                    <Text role="h3" color={theme.text} style={{ textTransform: 'capitalize' }}>{s}</Text>
+                    <Text role="small" color={theme.textMuted}>{severityHint(t, s)}</Text>
                   </View>
                 </Pressable>
               );
             })}
           </View>
 
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('privacy')}</Text>
+          <View style={{ gap: theme.spacing.md }}>
+            <Text role="h3" color={theme.text}>{t('privacy')}</Text>
             {PRIVACY.map((p) => {
               const active = privacy === p.level;
               return (
@@ -291,23 +293,23 @@ export default function ReportWizard() {
                     padding: theme.spacing.lg,
                   }}
                 >
-                  <Text style={{ color: theme.text, fontWeight: '700' }}>{t(p.labelKey)}</Text>
-                  <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 2 }}>{t(p.hintKey)}</Text>
+                  <Text role="bodyStrong" color={theme.text}>{t(p.labelKey)}</Text>
+                  <Text role="label" color={theme.textMuted} style={{ marginTop: theme.spacing.xs }}>{t(p.hintKey)}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>{t('evidenceOptional')}</Text>
+          <View style={{ gap: theme.spacing.md }}>
+            <Text role="h3" color={theme.text}>{t('evidenceOptional')}</Text>
             <Button label={t('addPhotosVideo')} variant="secondary" onPress={() => void addEvidence()} disabled={evidence.length >= 5} />
             <Button label={t('openCamera')} variant="secondary" onPress={() => void captureEvidence()} disabled={evidence.length >= 5} />
-            <Text selectable style={{ color: theme.textMuted }}>{`${evidence.length} ${t('of')} 5 ${t('evidenceSelected')}`}</Text>
+            <Text role="body" selectable color={theme.textMuted}>{`${evidence.length} ${t('of')} 5 ${t('evidenceSelected')}`}</Text>
           </View>
         </View>
       )}
 
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.sm }}>
         {step > 0 && (
           <View style={{ flex: 1 }}>
             <Button label={t('back')} variant="secondary" onPress={() => setStep((s) => s - 1)} />
@@ -321,7 +323,7 @@ export default function ReportWizard() {
           )}
         </View>
       </View>
-      <View style={{ height: insets.bottom + 8 }} />
+      <View style={{ height: insets.bottom + theme.spacing.sm }} />
     </ScrollView>
   );
 }
@@ -389,7 +391,7 @@ function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void 
   };
 
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: theme.spacing.sm }}>
       <Pressable
         onPress={() => void toggle()}
         disabled={busy}
@@ -399,8 +401,8 @@ function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void 
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
-          paddingVertical: 12,
+          gap: theme.spacing.sm,
+          paddingVertical: theme.spacing.md,
           borderRadius: theme.radius.md,
           borderWidth: 1.5,
           borderColor: state.isRecording ? theme.palette.danger : theme.accent,
@@ -409,16 +411,16 @@ function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void 
         }}
       >
         <Ionicons name={state.isRecording ? 'stop-circle' : 'mic'} size={20} color={state.isRecording ? theme.palette.danger : theme.accent} />
-        <Text style={{ color: state.isRecording ? theme.palette.danger : theme.accent, fontWeight: '700' }}>
+        <Text role="label" color={state.isRecording ? theme.palette.danger : theme.accent}>
           {busy ? t('transcribing') : state.isRecording ? t('stopRecording') : t('recordVoice')}
         </Text>
       </Pressable>
       {state.isRecording && (
-        <Text style={{ color: theme.textMuted, fontSize: 12, textAlign: 'center' }}>
+        <Text role="small" color={theme.textMuted} center>
           {Math.round(state.durationMillis / 1000)}s
         </Text>
       )}
-      {note && <Text style={{ color: theme.textMuted, fontSize: 12 }}>{note}</Text>}
+      {note && <Text role="small" color={theme.textMuted}>{note}</Text>}
     </View>
   );
 }

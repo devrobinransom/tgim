@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { ActivityIndicator, Pressable } from 'react-native';
 import { theme } from '../theme';
+import { Text } from './typography';
 
 interface ButtonProps {
   label: string;
@@ -21,8 +22,8 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
         borderColor: theme.accent,
         borderWidth: isPrimary ? 0 : 1.5,
         borderRadius: theme.radius.md,
-        paddingVertical: 14,
-        paddingHorizontal: 18,
+        paddingVertical: theme.spacing.lg,
+        paddingHorizontal: theme.spacing.xl,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
@@ -35,7 +36,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
       {loading ? (
         <ActivityIndicator color={isPrimary ? '#fff' : theme.accent} />
       ) : (
-        <Text style={{ color: isPrimary ? '#fff' : theme.accent, fontWeight: '700', fontSize: 15 }}>
+        <Text role="bodyStrong" color={isPrimary ? '#fff' : theme.accent}>
           {label}
         </Text>
       )}
