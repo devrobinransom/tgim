@@ -75,6 +75,9 @@ enum PromiseStatus {
 
 model User {
   id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identity_issuer          String?                  @db.VarChar(500)
+  identity_subject         String?                  @db.VarChar(255)
+  home_area_id             String?                  @db.Uuid
   clerk_user_id            String?                  @unique @db.VarChar(255)
   phone_number             String?                  @unique @db.VarChar(15)
   email                    String?                  @unique @db.VarChar(255)
@@ -104,6 +107,9 @@ model User {
   scope_grants            ActorScopeGrant[]         @relation("ScopeGrantActor")
   scope_grants_issued     ActorScopeGrant[]         @relation("ScopeGrantIssuer")
   published_manifestos    Manifesto[]               @relation("ManifestoPublisher")
+
+  @@unique([identity_issuer, identity_subject])
+  @@index([identity_subject])
 
   @@map("users")
 }
@@ -642,16 +648,24 @@ model PincodeBoundary {
 }
 
 model OutboxEvent {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  event_type   String   @db.VarChar(100)
-  entity_type  String   @db.VarChar(100)
-  entity_id    String   @db.VarChar(255)
-  payload      Json?
-  dispatched_at DateTime? @db.Timestamptz(6)
-  status       String   @default("pending") @db.VarChar(30)
-  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_type          String    @db.VarChar(100)
+  entity_type         String    @db.VarChar(100)
+  entity_id           String    @db.VarChar(255)
+  schema_version      Int       @default(1)
+  payload             Json?
+  status              String    @default("pending") @db.VarChar(30)
+  occurred_at         DateTime  @default(now()) @db.Timestamptz(6)
+  claimed_at          DateTime? @db.Timestamptz(6)
+  dispatched_at       DateTime? @db.Timestamptz(6)
+  acknowledged_at     DateTime? @db.Timestamptz(6)
+  attempt_count       Int       @default(0)
+  next_attempt_at     DateTime? @db.Timestamptz(6)
+  last_safe_error     String?   @db.Text
+  provider_message_id String?   @db.VarChar(255)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
 
-  @@index([status, dispatched_at])
+  @@index([status, next_attempt_at, created_at])
   @@map("outbox_events")
 }
 
@@ -672,4 +686,168 @@ model ActorScopeGrant {
   @@index([actor_id, scope_type, scope_id])
   @@index([scope_type, scope_id, revoked_at])
   @@map("actor_scope_grants")
+}
+
+model CivicForm {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug           String             @unique @db.VarChar(100)
+  title          String             @db.VarChar(255)
+  description    String?            @db.Text
+  status         String             @default("draft") @db.VarChar(20)
+  active_version Int                @default(1)
+  created_by     String             @db.Uuid
+  created_at     DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+  versions       CivicFormVersion[]
+
+  @@index([status, updated_at])
+  @@map("forms")
+}
+
+model CivicFormVersion {
+  id           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  form_id      String                     @db.Uuid
+  form         CivicForm                  @relation(fields: [form_id], references: [id], onDelete: Cascade)
+  version      Int
+  status       String                     @default("draft") @db.VarChar(20)
+  published_at DateTime?                  @db.Timestamptz(6)
+  created_by   String                     @db.Uuid
+  created_at   DateTime                   @default(now()) @db.Timestamptz(6)
+  questions    CivicFormQuestion[]
+  sessions     CivicFormResponseSession[]
+
+  @@unique([form_id, version])
+  @@index([form_id, status])
+  @@map("form_versions")
+}
+
+model CivicFormQuestion {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  form_version_id String           @db.Uuid
+  form_version    CivicFormVersion @relation(fields: [form_version_id], references: [id], onDelete: Cascade)
+  key             String           @db.VarChar(64)
+  label           String           @db.VarChar(255)
+  type            String           @db.VarChar(30)
+  required        Boolean          @default(false)
+  position        Int
+  options         Json?
+  validation      Json?
+
+  @@unique([form_version_id, key])
+  @@index([form_version_id, position])
+  @@map("form_questions")
+}
+
+model CivicFormResponseSession {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  form_version_id String              @db.Uuid
+  form_version    CivicFormVersion    @relation(fields: [form_version_id], references: [id])
+  actor_id        String              @db.Uuid
+  area_id         String?             @db.Uuid
+  idempotency_key String              @unique @db.Uuid
+  state           String              @default("submitted") @db.VarChar(20)
+  answers         Json
+  created_at      DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+  responses       CivicFormResponse[]
+
+  @@index([form_version_id, created_at])
+  @@index([actor_id, created_at])
+  @@map("form_response_sessions")
+}
+
+model CivicFormResponse {
+  id           String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id   String                   @db.Uuid
+  session      CivicFormResponseSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  question_key String                   @db.VarChar(64)
+  answer       Json
+  created_at   DateTime                 @default(now()) @db.Timestamptz(6)
+
+  @@unique([session_id, question_key])
+  @@map("form_responses")
+}
+
+model CivicPoll {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id     String            @db.Uuid
+  question    String            @db.VarChar(500)
+  description String?           @db.Text
+  type        String            @db.VarChar(30)
+  status      String            @default("draft") @db.VarChar(20)
+  starts_at   DateTime          @db.Timestamptz(6)
+  ends_at     DateTime          @db.Timestamptz(6)
+  eligibility Json?
+  created_by  String            @db.Uuid
+  created_at  DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  options     CivicPollOption[]
+  votes       CivicPollVote[]
+
+  @@index([area_id, status, starts_at, ends_at])
+  @@map("polls")
+}
+
+model CivicPollOption {
+  id       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poll_id  String          @db.Uuid
+  poll     CivicPoll       @relation(fields: [poll_id], references: [id], onDelete: Cascade)
+  label    String          @db.VarChar(255)
+  value    String          @db.VarChar(100)
+  position Int
+  votes    CivicPollVote[]
+
+  @@unique([poll_id, value])
+  @@index([poll_id, position])
+  @@map("poll_options")
+}
+
+model CivicPollVote {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poll_id         String           @db.Uuid
+  poll            CivicPoll        @relation(fields: [poll_id], references: [id], onDelete: Cascade)
+  actor_id        String           @db.Uuid
+  option_id       String?          @db.Uuid
+  option          CivicPollOption? @relation(fields: [option_id], references: [id])
+  ranking         String[]
+  allocation      Json?
+  value           Int?
+  idempotency_key String           @unique @db.Uuid
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+
+  @@unique([poll_id, actor_id])
+  @@index([poll_id, created_at])
+  @@map("poll_votes")
+}
+
+model OpenProjectMapping {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  party_promise_id   String                 @unique @db.Uuid
+  project_identifier String                 @db.VarChar(255)
+  work_package_id    String?                @db.VarChar(255)
+  status             String                 @default("pending") @db.VarChar(20)
+  last_safe_error    String?                @db.Text
+  last_synced_at     DateTime?              @db.Timestamptz(6)
+  created_at         DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  events             OpenProjectSyncEvent[]
+
+  @@index([status, updated_at])
+  @@map("openproject_mappings")
+}
+
+model OpenProjectSyncEvent {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mapping_id         String?             @db.Uuid
+  mapping            OpenProjectMapping? @relation(fields: [mapping_id], references: [id], onDelete: SetNull)
+  party_promise_id   String              @db.Uuid
+  direction          String              @db.VarChar(20)
+  status             String              @db.VarChar(20)
+  provider_receipt   String?             @db.VarChar(255)
+  last_safe_error    String?             @db.Text
+  public_payload_hash String              @db.Char(64)
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+
+  @@index([party_promise_id, created_at])
+  @@map("openproject_sync_events")
 }

@@ -2,22 +2,33 @@
   "name": "tgim-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev:api": "npm run dev -w apps/api",
-    "dev:web": "npm run dev -w apps/web",
-    "dev:mobile": "npm run start -w apps/mobile",
-    "build:api": "npm run build -w apps/api",
-    "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "dev:api": "pnpm --filter @tgim/api dev",
+    "dev:web": "pnpm --filter @tgim/web dev",
+    "dev:mobile": "pnpm --filter @tgim/mobile start",
+    "build:api": "pnpm --filter @tgim/api build",
+    "build:web": "pnpm --filter @tgim/web build",
+    "typecheck:mobile": "pnpm --filter @tgim/mobile typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "verify": "pnpm --filter @tgim/shared build && pnpm --filter @tgim/api-client build && pnpm --filter @tgim/api test && pnpm --filter @tgim/web build && pnpm --filter @tgim/mobile typecheck",
+    "verify:sovereign": "sh scripts/verify-sovereign.sh"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
+    "agent-browser": "^0.31.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "typescript-eslint": "^8.63.0"
   }
 }

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { IssueCategory, IssueSeverity, PromiseStatus } from './types.js';
 
 /**
@@ -112,6 +113,9 @@ export const statusColor: Record<PromiseStatus, string> = {
   completed: '#10b981',
   delayed: '#f59e0b',
   disputed: '#ef4444',
+  deferred: '#64748b',
+  rejected: '#b91c1c',
+  no_update: '#94a3b8',
 };
 
 export const tokens = {
@@ -127,3 +131,20 @@ export const tokens = {
 } as const;
 
 export type Tokens = typeof tokens;
+
+/**
+ * Sovereignty configuration for India Sovereignty Mode.
+ * When mode is 'sovereign', non-resident managed services are disabled and
+ * the OIDC, Valkey/BullMQ, Postgres, and S3-compatible ports must resolve to
+ * India-hosted infrastructure. Demo auth and in-process jobs are development
+ * fallbacks only; they are never a sovereign production runtime.
+ */
+export const SovereigntyConfigSchema = z.object({
+  mode: z.enum(['managed', 'sovereign']).default('managed'),
+  identityProvider: z.literal('oidc').default('oidc'),
+  jobProvider: z.literal('bullmq').default('bullmq'),
+  storageProvider: z.enum(['s3', 'minio']).default('minio'),
+  requireIndiaRegion: z.boolean().default(true),
+});
+
+export type SovereigntyConfig = z.infer<typeof SovereigntyConfigSchema>;

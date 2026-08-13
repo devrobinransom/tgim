@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata: { name: tgim-api, namespace: tgim }
+spec: { selector: { app: tgim-api }, ports: [{ name: http, port: 3000, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: tgim-web, namespace: tgim }
+spec: { selector: { app: tgim-web }, ports: [{ name: http, port: 3000, targetPort: http }] }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: tgim-api, namespace: tgim }
+spec: { minAvailable: 2, selector: { matchLabels: { app: tgim-api } } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: tgim-web, namespace: tgim }
+spec: { minAvailable: 1, selector: { matchLabels: { app: tgim-web } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: tgim-api, namespace: tgim }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: tgim-api }
+  minReplicas: 3
+  maxReplicas: 10
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tgim
+  namespace: tgim
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.middlewares: tgim-security-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls: [{ hosts: [tgim.in, api.tgim.in, id.tgim.in, projects.tgim.in], secretName: tgim-public-tls }]
+  rules:
+    - host: tgim.in
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: tgim-web, port: { name: http } } } }] }
+    - host: api.tgim.in
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: tgim-api, port: { name: http } } } }] }
+    - host: id.tgim.in
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: keycloak, port: { name: http } } } }] }
+    - host: projects.tgim.in
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: openproject, port: { name: http } } } }] }
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata: { name: security-headers, namespace: tgim }
+spec:
+  headers:
+    contentTypeNosniff: true
+    browserXssFilter: true
+    referrerPolicy: no-referrer
+    frameDeny: true
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    permissionsPolicy: "camera=(self), geolocation=(self), microphone=()"

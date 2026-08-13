@@ -29,8 +29,8 @@ export const API_BASE_URL = resolveApiBaseUrl();
  * The build is locked to Mumbai Suburban District (see MEMORY.md). These are the
  * seed area id (matching the in-memory API) and the six target pincodes.
  */
-export const ACTIVE_AREA_ID = 'ward-12-id';
-export const ACTIVE_AREA_NAME = 'Mumbai South Central';
+export const ACTIVE_AREA_ID = process.env.EXPO_PUBLIC_DEFAULT_AREA_ID || '10000000-0000-4000-8000-000000000012';
+export const ACTIVE_AREA_NAME = 'Andheri East';
 
 export const SEED_PINCODES = [
   '400049',

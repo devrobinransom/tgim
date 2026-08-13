@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tgim-runtime
+  namespace: tgim
+data:
+  NODE_ENV: production
+  SOVEREIGNTY_MODE: sovereign
+  IDENTITY_PROVIDER: oidc
+  JOB_PROVIDER: bullmq
+  STORAGE_PROVIDER: minio
+  RATE_LIMIT_BACKEND: valkey
+  TRUST_PROXY: "true"
+  DEMO_MODE: "false"
+  DEMO_AUTH_ENABLED: "false"
+  WEB_DEMO_MODE: "false"
+  REQUIRE_INDIA_REGION: "true"
+  HOST: 0.0.0.0
+  PORT: "3000"
+  API_ORIGIN_INTERNAL: http://tgim-api:3000
+  NEXT_PUBLIC_API_ORIGIN: /api/bff
+  NEXT_PUBLIC_OIDC_ENABLED: "true"
+  NEXT_PUBLIC_DEMO_MODE: "false"
+  NEXT_PUBLIC_SOVEREIGNTY_MODE: sovereign
+  NEXT_PUBLIC_DEFAULT_AREA_ID: 10000000-0000-4000-8000-000000000012
+  OPENPROJECT_URL: http://openproject:8080
+  S3_ENDPOINT: http://minio:9000
+  S3_FORCE_PATH_STYLE: "true"
+  S3_REGION: ap-south-1
+  BULLMQ_QUEUE_NAME: tgim-events
+  BULLMQ_WORKER_CONCURRENCY: "8"
+  AI_PROVIDER: deterministic
+  SMTP_REQUIRE_TLS: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tgim-api
+  namespace: tgim
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tgim-web
+  namespace: tgim
+automountServiceAccountToken: false

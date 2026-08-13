@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { theme } from '../../src/theme';
+import { useI18n } from '../../src/i18n';
 
 export default function TabsLayout() {
+  const { t } = useI18n();
   return (
     <Tabs
       screenOptions={{
@@ -16,35 +18,49 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Map',
+          title: t('map'),
           tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="report"
         options={{
-          title: 'Report',
+          title: t('report'),
           tabBarIcon: ({ color, size }) => <Ionicons name="add-circle" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="verify"
+        options={{
+          title: t('verify'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="manifesto"
         options={{
-          title: 'Manifesto',
+          title: t('manifesto'),
           tabBarIcon: ({ color, size }) => <Ionicons name="document-text" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="participate"
+        options={{
+          title: 'Participate',
+          tabBarIcon: ({ color, size }) => <Ionicons name="checkbox" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="tracker"
         options={{
-          title: 'Tracker',
+          title: t('tracker'),
           tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done-circle" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="me"
         options={{
-          title: 'Me',
+          title: t('me'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
         }}
       />

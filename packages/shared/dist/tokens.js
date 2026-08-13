@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tokens = exports.statusColor = exports.severityToScale = exports.severityScale = exports.categoryColor = exports.typography = exports.radius = exports.spacing = exports.slate = exports.palette = void 0;
+exports.SovereigntyConfigSchema = exports.tokens = exports.statusColor = exports.severityToScale = exports.severityScale = exports.categoryColor = exports.typography = exports.radius = exports.spacing = exports.slate = exports.palette = void 0;
+const zod_1 = require("zod");
 /**
  * TGIM design tokens — the single source of truth for the visual language,
  * extracted from docs/DESIGN.md (which mirrors apps/web/src/index.css :root).
@@ -102,6 +103,9 @@ exports.statusColor = {
     completed: '#10b981',
     delayed: '#f59e0b',
     disputed: '#ef4444',
+    deferred: '#64748b',
+    rejected: '#b91c1c',
+    no_update: '#94a3b8',
 };
 exports.tokens = {
     palette: exports.palette,
@@ -114,3 +118,17 @@ exports.tokens = {
     severityToScale: exports.severityToScale,
     statusColor: exports.statusColor,
 };
+/**
+ * Sovereignty configuration for India Sovereignty Mode.
+ * When mode is 'sovereign', non-resident managed services are disabled and
+ * the OIDC, Valkey/BullMQ, Postgres, and S3-compatible ports must resolve to
+ * India-hosted infrastructure. Demo auth and in-process jobs are development
+ * fallbacks only; they are never a sovereign production runtime.
+ */
+exports.SovereigntyConfigSchema = zod_1.z.object({
+    mode: zod_1.z.enum(['managed', 'sovereign']).default('managed'),
+    identityProvider: zod_1.z.literal('oidc').default('oidc'),
+    jobProvider: zod_1.z.literal('bullmq').default('bullmq'),
+    storageProvider: zod_1.z.enum(['s3', 'minio']).default('minio'),
+    requireIndiaRegion: zod_1.z.boolean().default(true),
+});

@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgim-api
+  namespace: tgim
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: tgim-api } }
+  template:
+    metadata: { labels: { app: tgim-api } }
+    spec:
+      serviceAccountName: tgim-api
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: api
+          image: registry.tgim.in/tgim/api:release
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 3000 }]
+          envFrom:
+            - configMapRef: { name: tgim-runtime }
+            - secretRef: { name: tgim-runtime }
+          readinessProbe: { httpGet: { path: /ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 20, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 250m, memory: 384Mi }, limits: { cpu: "2", memory: 1Gi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgim-worker
+  namespace: tgim
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: tgim-worker } }
+  template:
+    metadata: { labels: { app: tgim-worker } }
+    spec:
+      serviceAccountName: tgim-api
+      terminationGracePeriodSeconds: 60
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: worker
+          image: registry.tgim.in/tgim/api:release
+          command: [node, apps/api/dist/worker.js]
+          envFrom:
+            - configMapRef: { name: tgim-runtime }
+            - secretRef: { name: tgim-runtime }
+          resources: { requests: { cpu: 200m, memory: 384Mi }, limits: { cpu: "2", memory: 1Gi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgim-web
+  namespace: tgim
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: tgim-web } }
+  template:
+    metadata: { labels: { app: tgim-web } }
+    spec:
+      serviceAccountName: tgim-web
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: web
+          image: registry.tgim.in/tgim/web:release
+          ports: [{ name: http, containerPort: 3000 }]
+          envFrom:
+            - configMapRef: { name: tgim-runtime }
+            - secretRef: { name: tgim-runtime }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: { requests: { cpu: 150m, memory: 256Mi }, limits: { cpu: "1", memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tgim-migrate
+  namespace: tgim
+  annotations: { argocd.argoproj.io/hook: PreSync, argocd.argoproj.io/hook-delete-policy: BeforeHookCreation }
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: tgim-api
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: migrate
+          image: registry.tgim.in/tgim/api:release
+          command: [/app/apps/api/node_modules/.bin/prisma, migrate, deploy, --schema, /app/apps/api/prisma/schema.prisma]
+          envFrom:
+            - configMapRef: { name: tgim-runtime }
+            - secretRef: { name: tgim-runtime }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]

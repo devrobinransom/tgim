@@ -1,1 +1,38 @@
 .repo.git/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Tooling state
+.wrangler/
+.vercel/
+.expo/
+.turbo/
+.hermes/
+.kimi-code/
+.codex/
+coverage/
+.vercel
+.env*
+
+# Local agent/session notes are not product source.
+MEMORY.md
+
+# Test and generated reports
+playwright-report/
+test-results/
+*.log
+
+# Framework-generated agent hints (recreated by `next dev`).
+apps/web/AGENTS.md
+apps/web/CLAUDE.md

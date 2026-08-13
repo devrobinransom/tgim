@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tgim-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.tgim.in/platform/tgim.git
+    targetRevision: main
+    path: infra/k8s/overlays/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tgim
+  syncPolicy:
+    automated: { prune: true, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, PruneLast=true]
+    retry: { limit: 3, backoff: { duration: 10s, factor: 2, maxDuration: 3m } }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg-operator
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: registry.tgim.in/charts
+    chart: cloudnative-pg
+    targetRevision: approved
+  destination: { server: https://kubernetes.default.svc, namespace: cnpg-system }
+  syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }

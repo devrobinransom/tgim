@@ -1,73 +1,37 @@
-# React + TypeScript + Vite
+# TGIM web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Next.js App Router application for TGIM's public accountability records,
+citizen participation, and role-specific workspaces.
 
-Currently, two official plugins are available:
+Authentication uses an authorization-code PKCE flow against the sovereign OIDC
+issuer. The browser never receives provider credentials: the Next.js BFF stores
+access and refresh tokens in HttpOnly cookies and forwards authenticated calls
+to `API_ORIGIN_INTERNAL`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Local development
 
-## React Compiler
+From the repository root:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+pnpm --filter @tgim/web dev
+pnpm --filter @tgim/web lint
+pnpm --filter @tgim/web build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+For an in-memory local walkthrough, run the API with `TGIM_IN_MEMORY=true` and
+set `NEXT_PUBLIC_DEMO_MODE=true`, `WEB_DEMO_MODE=true`, and
+`API_ORIGIN_INTERNAL=http://127.0.0.1:3000` for the web process. Set
+`WEB_DEMO_ROLE` to one of `citizen`, `volunteer`, `party_lead`,
+`department_officer`, `platform_moderator`, or `platform_admin` to exercise a
+specific workspace. The demo role is server-controlled; changing a browser URL
+does not change identity. Demo mode is rejected by the production readiness
+contract.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Web maps use MapLibre with OpenStreetMap geography. Local demo mode falls back
+to the OSM-derived OpenFreeMap style. Set `NEXT_PUBLIC_MAP_STYLE_URL` in staging
+and production to the TGIM-managed or contracted OSM vector-tile style; do not
+use the donation-funded `tile.openstreetmap.org` service as an unbounded
+production backend. Map attribution remains visible in every state.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Production configuration and release evidence requirements live in
+`docs/SOVEREIGN_RUNBOOK.md`.

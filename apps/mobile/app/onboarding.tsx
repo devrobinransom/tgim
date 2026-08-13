@@ -8,18 +8,20 @@ import { LANGUAGES, ACTIVE_AREA_NAME } from '../src/config';
 import { useSession } from '../src/store/session';
 import { theme } from '../src/theme';
 
-const ROLES: { role: UserRole; label: string; blurb: string }[] = [
+type PublicMobileRole = Extract<UserRole, 'citizen' | 'volunteer'>;
+
+const ROLES: { role: PublicMobileRole; label: string; blurb: string }[] = [
   { role: 'citizen', label: 'Citizen', blurb: 'Report & support local issues' },
   { role: 'volunteer', label: 'Volunteer', blurb: 'Verify clusters in the field' },
-  { role: 'party_lead', label: 'Party / Candidate', blurb: 'Adopt citizen demands' },
-  { role: 'department_officer', label: 'Officer', blurb: 'Update delivery progress' },
 ];
 
 export default function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { role, language, setRole, setLanguage, completeOnboarding } = useSession();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(role);
+  const [selectedRole, setSelectedRole] = useState<PublicMobileRole>(
+    role === 'volunteer' ? 'volunteer' : 'citizen',
+  );
 
   const start = () => {
     setRole(selectedRole);
@@ -42,11 +44,11 @@ export default function Onboarding() {
       </View>
 
       <Text style={{ fontSize: 26, fontWeight: '800', color: theme.text, lineHeight: 32 }}>
-        India's problems, mapped by its <Text style={{ color: theme.accent }}>people</Text>.
+        Report issues, verify what matters, and track every <Text style={{ color: theme.accent }}>promise</Text>.
       </Text>
 
       <View style={{ gap: 10 }}>
-        <Text style={{ fontWeight: '700', color: theme.text }}>I am a…</Text>
+        <Text style={{ fontWeight: '700', color: theme.text }}>Use TGIM as a...</Text>
         {ROLES.map((r) => {
           const active = selectedRole === r.role;
           return (
@@ -123,7 +125,7 @@ export default function Onboarding() {
         </Text>
       </View>
 
-      <Button label="Start Exploring" onPress={start} />
+      <Button label="Enter public app" onPress={start} />
       <View style={{ height: insets.bottom + 12 }} />
     </ScrollView>
   );

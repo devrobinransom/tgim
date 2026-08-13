@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: valkey, namespace: tgim }
+spec:
+  serviceName: valkey
+  replicas: 1
+  selector: { matchLabels: { app: valkey } }
+  template:
+    metadata: { labels: { app: valkey } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: valkey
+          image: "registry.tgim.in/mirror/valkey:8-approved"
+          args: ["valkey-server", "--appendonly", "yes", "--requirepass", "$(VALKEY_PASSWORD)"]
+          env: [{ name: VALKEY_PASSWORD, valueFrom: { secretKeyRef: { name: tgim-runtime, key: VALKEY_PASSWORD } } }]
+          ports: [{ name: valkey, containerPort: 6379 }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "2", memory: 2Gi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], storageClassName: encrypted-local-path, resources: { requests: { storage: 20Gi } } }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: minio, namespace: tgim }
+spec:
+  serviceName: minio-headless
+  replicas: 4
+  selector: { matchLabels: { app: minio } }
+  template:
+    metadata: { labels: { app: minio } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: minio
+          image: registry.tgim.in/mirror/minio:approved
+          args:
+            - server
+            - "http://minio-{0...3}.minio-headless.tgim.svc.cluster.local/data"
+            - --console-address
+            - ":9001"
+          envFrom: [{ secretRef: { name: minio-root } }]
+          ports: [{ name: api, containerPort: 9000 }, { name: console, containerPort: 9001 }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: "2", memory: 4Gi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], storageClassName: encrypted-local-path, resources: { requests: { storage: 100Gi } } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: keycloak, namespace: tgim }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: keycloak } }
+  template:
+    metadata: { labels: { app: keycloak } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: keycloak
+          image: registry.tgim.in/mirror/keycloak:approved
+          args: [start, --optimized, --proxy-headers=xforwarded, --http-enabled=true]
+          envFrom: [{ secretRef: { name: keycloak-runtime } }]
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 30, periodSeconds: 10 }
+          resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: "2", memory: 3Gi } }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: openproject, namespace: tgim }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: openproject } }
+  template:
+    metadata: { labels: { app: openproject } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: openproject
+          image: registry.tgim.in/mirror/openproject:approved
+          envFrom: [{ secretRef: { name: openproject-runtime } }]
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /health_checks/default, port: http }, initialDelaySeconds: 60, periodSeconds: 15 }
+          resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: "3", memory: 4Gi } }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: metabase, namespace: tgim }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: metabase } }
+  template:
+    metadata: { labels: { app: metabase } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: metabase
+          image: registry.tgim.in/mirror/metabase:approved
+          envFrom: [{ secretRef: { name: metabase-runtime } }]
+          ports: [{ name: http, containerPort: 3000 }]
+          readinessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 60, periodSeconds: 15 }
+          resources: { requests: { cpu: 250m, memory: 768Mi }, limits: { cpu: "2", memory: 3Gi } }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: valkey, namespace: tgim }
+spec: { clusterIP: None, selector: { app: valkey }, ports: [{ name: valkey, port: 6379 }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio-headless, namespace: tgim }
+spec: { clusterIP: None, selector: { app: minio }, ports: [{ name: api, port: 9000 }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio, namespace: tgim }
+spec: { selector: { app: minio }, ports: [{ name: api, port: 9000 }, { name: console, port: 9001 }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: keycloak, namespace: tgim }
+spec: { selector: { app: keycloak }, ports: [{ name: http, port: 8080 }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: openproject, namespace: tgim }
+spec: { selector: { app: openproject }, ports: [{ name: http, port: 8080 }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: metabase, namespace: tgim }
+spec: { selector: { app: metabase }, ports: [{ name: http, port: 3000 }] }

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { IssueCategory, IssueSeverity, PrivacyLevel } from '@tgim/shared';
@@ -8,7 +10,7 @@ import { tokens } from '@tgim/shared';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { ACTIVE_AREA_NAME } from '../../src/config';
-import { enqueueDraft, sync, useDraftQueue } from '../../src/store/draftQueue';
+import { enqueueDraft, sync, useDraftQueue, type EvidenceReference } from '../../src/store/draftQueue';
 import { theme } from '../../src/theme';
 
 const CATEGORIES: IssueCategory[] = [
@@ -56,28 +58,66 @@ export default function ReportWizard() {
   const [privacy, setPrivacy] = useState<PrivacyLevel>('public');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState(AREA_CENTROID);
+  const [locationMessage, setLocationMessage] = useState('Using the selected area centroid');
+  const [evidence, setEvidence] = useState<EvidenceReference[]>([]);
 
-  const TOTAL = 5;
+  const captureCurrentLocation = async () => {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (!permission.granted) {
+      setLocationMessage('Location permission was not granted. You can still report using the area centroid.');
+      return;
+    }
+    const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    setCoordinates({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+    setLocationMessage('Current location captured privately. Public views receive only the server-blurred point.');
+  };
+
+  const addEvidence = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setLocationMessage('Photo library permission was not granted. Evidence remains optional.');
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 0.85, videoMaxDuration: 30, allowsMultipleSelection: true, selectionLimit: 5 - evidence.length });
+    if (picked.canceled) return;
+    const next = await Promise.all(picked.assets.map(async asset => {
+      const mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' = asset.type === 'video' ? 'video/mp4' : asset.mimeType === 'image/png' || asset.mimeType === 'image/webp' ? asset.mimeType : 'image/jpeg';
+      return { uri: asset.uri, filename: asset.fileName || `evidence-${Date.now()}.${mediaType === 'video/mp4' ? 'mp4' : 'jpg'}`, media_type: mediaType };
+    }));
+    setEvidence(current => [...current, ...next].slice(0, 5));
+  };
+
+  const captureEvidence = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) { setLocationMessage('Camera permission was not granted. Evidence remains optional.'); return; }
+    const captured = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 0.85, videoMaxDuration: 30 });
+    if (captured.canceled) return;
+    const asset = captured.assets[0];
+    const mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4' = asset.type === 'video' ? 'video/mp4' : asset.mimeType === 'image/png' || asset.mimeType === 'image/webp' ? asset.mimeType : 'image/jpeg';
+    setEvidence(current => [...current, { uri: asset.uri, filename: asset.fileName || `evidence-${Date.now()}.${mediaType === 'video/mp4' ? 'mp4' : 'jpg'}`, media_type: mediaType }].slice(0, 5));
+  };
+
+  const TOTAL = 6;
   const canNext =
     (step === 0) ||
     (step === 1 && category !== null) ||
     (step === 2 && description.trim().length >= 10) ||
-    step === 3 ||
-    step === 4;
+    step === 3 || step === 4 || step === 5;
 
   const submit = async () => {
     if (!category) return;
     setSubmitting(true);
     setResult(null);
-    // 1) Durably enqueue FIRST — survives no-signal / force-quit.
+    // Durably enqueue before issue creation — survives no-signal / force-quit.
     await enqueueDraft({
       category,
       description: description.trim(),
       severity,
       privacy,
-      latitude: AREA_CENTROID.latitude,
-      longitude: AREA_CENTROID.longitude,
-    });
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+    }, evidence);
     // 2) Attempt immediate sync; idempotency_key makes a retry safe.
     const { synced, pending } = await sync();
     setSubmitting(false);
@@ -95,6 +135,7 @@ export default function ReportWizard() {
     setSeverity('medium');
     setPrivacy('public');
     setResult(null);
+    setEvidence([]);
   };
 
   if (result) {
@@ -154,6 +195,8 @@ export default function ReportWizard() {
               Mumbai Suburban District. Your exact pin is kept private — only a blurred public
               location is ever shared.
             </Text>
+            <Button label="Use my current location" variant="secondary" onPress={() => void captureCurrentLocation()} />
+            <Text selectable style={{ color: theme.textMuted, fontSize: 12 }}>{locationMessage}</Text>
           </View>
         </View>
       )}
@@ -218,6 +261,16 @@ export default function ReportWizard() {
 
       {step === 3 && (
         <View style={{ gap: 12 }}>
+          <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>Evidence (optional)</Text>
+          <Text selectable style={{ color: theme.textMuted }}>Photos and short videos are re-encoded by TGIM before publication to remove embedded metadata.</Text>
+          <Button label="Choose photos or video" variant="secondary" onPress={() => void addEvidence()} disabled={evidence.length >= 5} />
+          <Button label="Open camera" variant="secondary" onPress={() => void captureEvidence()} disabled={evidence.length >= 5} />
+          <Text selectable style={{ color: theme.textMuted }}>{evidence.length} of 5 selected</Text>
+        </View>
+      )}
+
+      {step === 4 && (
+        <View style={{ gap: 12 }}>
           <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>Severity</Text>
           <View style={{ gap: 10 }}>
             {SEVERITIES.map((s) => {
@@ -247,7 +300,7 @@ export default function ReportWizard() {
         </View>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <View style={{ gap: 12 }}>
           <Text style={{ fontWeight: '700', color: theme.text, fontSize: 16 }}>Privacy</Text>
           {PRIVACY.map((p) => {

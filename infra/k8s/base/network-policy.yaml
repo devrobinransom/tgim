@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: tgim }
+spec: { podSelector: {}, policyTypes: [Ingress, Egress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-dns, namespace: tgim }
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress: [{ to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } } }], ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-controller, namespace: tgim }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [tgim-web, tgim-api, keycloak, openproject] }] }
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } } }], ports: [{ protocol: TCP, port: 3000 }, { protocol: TCP, port: 8080 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: application-internal, namespace: tgim }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: {} }] }]
+  egress: [{ to: [{ podSelector: {} }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: controlled-external-egress, namespace: tgim }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [tgim-api, tgim-worker, tgim-web] }] }
+  policyTypes: [Egress]
+  egress: [{ ports: [{ protocol: TCP, port: 443 }, { protocol: TCP, port: 587 }] }]

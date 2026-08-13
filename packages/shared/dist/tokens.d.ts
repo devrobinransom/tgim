@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { IssueCategory, IssueSeverity, PromiseStatus } from './types.js';
 /**
  * TGIM design tokens — the single source of truth for the visual language,
@@ -178,3 +179,30 @@ export declare const tokens: {
     readonly statusColor: Record<PromiseStatus, string>;
 };
 export type Tokens = typeof tokens;
+/**
+ * Sovereignty configuration for India Sovereignty Mode.
+ * When mode is 'sovereign', non-resident managed services are disabled and
+ * the OIDC, Valkey/BullMQ, Postgres, and S3-compatible ports must resolve to
+ * India-hosted infrastructure. Demo auth and in-process jobs are development
+ * fallbacks only; they are never a sovereign production runtime.
+ */
+export declare const SovereigntyConfigSchema: z.ZodObject<{
+    mode: z.ZodDefault<z.ZodEnum<["managed", "sovereign"]>>;
+    identityProvider: z.ZodDefault<z.ZodLiteral<"oidc">>;
+    jobProvider: z.ZodDefault<z.ZodLiteral<"bullmq">>;
+    storageProvider: z.ZodDefault<z.ZodEnum<["s3", "minio"]>>;
+    requireIndiaRegion: z.ZodDefault<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    mode: "managed" | "sovereign";
+    identityProvider: "oidc";
+    jobProvider: "bullmq";
+    storageProvider: "s3" | "minio";
+    requireIndiaRegion: boolean;
+}, {
+    mode?: "managed" | "sovereign" | undefined;
+    identityProvider?: "oidc" | undefined;
+    jobProvider?: "bullmq" | undefined;
+    storageProvider?: "s3" | "minio" | undefined;
+    requireIndiaRegion?: boolean | undefined;
+}>;
+export type SovereigntyConfig = z.infer<typeof SovereigntyConfigSchema>;

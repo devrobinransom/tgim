@@ -1,10 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { UserRole } from '@tgim/shared';
 
 /**
- * Sandbox session: role + language + whether onboarding is done. No real auth
- * yet (the API hardcodes actor ids) — this mirrors the web sim's role switcher.
+ * Device preferences only. In sovereign production the API derives roles from
+ * the OIDC identity and scope grants; this role is sent only in explicit demo mode.
  */
 
 const STORAGE_KEY = 'tgim:session:v1';
@@ -31,7 +31,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+    SecureStore.getItemAsync(STORAGE_KEY).then((raw) => {
       if (raw) setState(JSON.parse(raw) as SessionState);
       setReady(true);
     });
@@ -41,7 +41,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const update = (patch: Partial<SessionState>) =>
       setState((prev) => {
         const next = { ...prev, ...patch };
-        void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        void SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next), { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
         return next;
       });
     return {

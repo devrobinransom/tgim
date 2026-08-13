@@ -1,38 +1,29 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useCallback, useEffect, useState } from 'react';
 import type { CreateIssueInput } from '@tgim/api-client';
 import { api, isApiReachable } from '../api';
+import { ProtectedOperation, readProtected, safeOperationError, writeProtected } from './protectedOperationStore';
 
-/**
- * Offline-first report queue (blueprint Slice 1).
- *
- * A "Pin a Problem" submission is written to durable storage FIRST with an
- * idempotency key, so it survives a force-quit or no-signal. `sync()` then
- * drains the queue against the API; the server's idempotency_key makes retries
- * safe (a double-send creates at most one issue). This is why the wizard never
- * blocks on the network.
- *
- * Production swap: AsyncStorage → MMKV/SQLite (same interface).
- */
+const STORE_NAME = 'report-operations';
+const EVIDENCE_DIRECTORY = `${FileSystem.documentDirectory}tgim-evidence/`;
 
-const STORAGE_KEY = 'tgim:draft-queue:v1';
+export interface EvidenceReference {
+  uri: string;
+  filename: string;
+  media_type: 'image/jpeg' | 'image/png' | 'image/webp' | 'video/mp4';
+}
 
-export interface QueuedDraft {
+export interface QueuedDraft extends ProtectedOperation<CreateIssueInput> {
   idempotency_key: string;
-  payload: CreateIssueInput;
-  createdAt: number;
-  /** Issue id once successfully synced; undefined while pending. */
+  evidence: EvidenceReference[];
   syncedIssueId?: string;
-  lastError?: string;
 }
 
 type Listener = (drafts: QueuedDraft[]) => void;
-
 let memoryCache: QueuedDraft[] | null = null;
 const listeners = new Set<Listener>();
 let idCounter = 0;
 
-/** Idempotency key — durable + unique enough for one device's report stream. */
 export function newIdempotencyKey(): string {
   idCounter += 1;
   return `draft-${Date.now()}-${idCounter}-${Math.floor(Math.random() * 1e6)}`;
@@ -40,86 +31,82 @@ export function newIdempotencyKey(): string {
 
 async function load(): Promise<QueuedDraft[]> {
   if (memoryCache) return memoryCache;
-  const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  memoryCache = raw ? (JSON.parse(raw) as QueuedDraft[]) : [];
+  memoryCache = (await readProtected<QueuedDraft[]>(STORE_NAME)) ?? [];
   return memoryCache;
 }
 
 async function persist(drafts: QueuedDraft[]): Promise<void> {
   memoryCache = drafts;
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-  listeners.forEach((l) => l(drafts));
+  await writeProtected(STORE_NAME, drafts);
+  listeners.forEach((listener) => listener(drafts));
 }
 
-/** Enqueue a report. Returns the queued draft; call sync() to attempt upload. */
-export async function enqueueDraft(
-  payload: Omit<CreateIssueInput, 'idempotency_key'>,
-): Promise<QueuedDraft> {
+async function copyEvidence(operationId: string, evidence: EvidenceReference[]): Promise<EvidenceReference[]> {
+  if (!evidence.length) return [];
+  await FileSystem.makeDirectoryAsync(`${EVIDENCE_DIRECTORY}${operationId}`, { intermediates: true });
+  return Promise.all(evidence.map(async (item, index) => {
+    const safeFilename = item.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uri = `${EVIDENCE_DIRECTORY}${operationId}/${index}-${safeFilename}`;
+    await FileSystem.copyAsync({ from: item.uri, to: uri });
+    return { ...item, uri };
+  }));
+}
+
+export async function enqueueDraft(payload: Omit<CreateIssueInput, 'idempotency_key'>, evidence: EvidenceReference[] = []): Promise<QueuedDraft> {
   const drafts = await load();
+  const idempotency_key = newIdempotencyKey();
+  const now = Date.now();
   const draft: QueuedDraft = {
-    idempotency_key: newIdempotencyKey(),
-    payload: { ...payload, idempotency_key: '' } as CreateIssueInput,
-    createdAt: Date.now(),
+    id: idempotency_key,
+    idempotency_key,
+    payload: { ...payload, idempotency_key },
+    evidence: await copyEvidence(idempotency_key, evidence),
+    state: 'queued',
+    createdAt: now,
+    updatedAt: now,
+    attemptCount: 0,
   };
-  draft.payload.idempotency_key = draft.idempotency_key;
   await persist([draft, ...drafts]);
   return draft;
 }
 
-/** Drain pending drafts against the API. Safe to call repeatedly. */
-export async function sync(): Promise<{ synced: number; pending: number }> {
-  const drafts = await load();
-  const pending = drafts.filter((d) => !d.syncedIssueId);
-  if (pending.length === 0) return { synced: 0, pending: 0 };
+async function toUpload(reference: EvidenceReference) {
+  const base64 = await FileSystem.readAsStringAsync(reference.uri, { encoding: FileSystem.EncodingType.Base64 });
+  return { filename: reference.filename, media_type: reference.media_type, base64 };
+}
 
-  if (!(await isApiReachable())) {
-    return { synced: 0, pending: pending.length };
-  }
+export async function sync(): Promise<{ synced: number; pending: number; blocked: number }> {
+  const drafts = await load();
+  const candidates = drafts.filter((draft) => draft.state !== 'accepted' && draft.state !== 'needs_attention' && draft.state !== 'discarded' && (!draft.nextAttemptAt || draft.nextAttemptAt <= Date.now()));
+  if (!candidates.length) return { synced: 0, pending: drafts.filter((draft) => draft.state !== 'accepted').length, blocked: drafts.filter((draft) => draft.state === 'needs_attention').length };
+  if (!(await isApiReachable())) return { synced: 0, pending: drafts.filter((draft) => draft.state !== 'accepted').length, blocked: drafts.filter((draft) => draft.state === 'needs_attention').length };
 
   let synced = 0;
   const next = [...drafts];
-  for (const draft of pending) {
-    const idx = next.findIndex((d) => d.idempotency_key === draft.idempotency_key);
+  for (const draft of candidates) {
+    const index = next.findIndex((item) => item.id === draft.id);
+    // Persist the transition before the network call. A process kill now
+    // reopens as a retryable operation rather than a false success.
+    next[index] = { ...draft, state: 'submitting', updatedAt: Date.now() };
+    await persist(next);
     try {
-      const issue = await api.issues.create(draft.payload);
-      next[idx] = { ...draft, syncedIssueId: issue.id, lastError: undefined };
+      const uploaded = await Promise.all(draft.evidence.map(async (reference) => api.media.upload(await toUpload(reference))));
+      const issue = await api.issues.create(uploaded.length ? { ...draft.payload, media: uploaded.map((item) => ({ media_url: item.media_url, media_type: item.media_type, media_hash: item.media_hash })) } : draft.payload);
+      next[index] = { ...draft, state: 'accepted', syncedIssueId: issue.id, updatedAt: Date.now(), serverReceipt: { id: issue.id, receivedAt: Date.now() }, lastSafeError: undefined, nextAttemptAt: undefined };
       synced += 1;
-    } catch (err) {
-      next[idx] = { ...draft, lastError: err instanceof Error ? err.message : 'sync failed' };
+    } catch (error) {
+      const classified = safeOperationError(error);
+      next[index] = { ...draft, state: classified.state, updatedAt: Date.now(), attemptCount: draft.attemptCount + 1, nextAttemptAt: classified.retryAfterMs ? Date.now() + classified.retryAfterMs : undefined, lastSafeError: classified.message };
     }
   }
   await persist(next);
-  return { synced, pending: next.filter((d) => !d.syncedIssueId).length };
+  return { synced, pending: next.filter((draft) => draft.state !== 'accepted').length, blocked: next.filter((draft) => draft.state === 'needs_attention').length };
 }
 
-export async function clearSynced(): Promise<void> {
-  const drafts = await load();
-  await persist(drafts.filter((d) => !d.syncedIssueId));
-}
+export async function clearSynced(): Promise<void> { await persist((await load()).filter((draft) => draft.state !== 'accepted')); }
 
-/** React hook exposing the live queue + pending count + a sync trigger. */
 export function useDraftQueue() {
   const [drafts, setDrafts] = useState<QueuedDraft[]>(memoryCache ?? []);
-
-  useEffect(() => {
-    let active = true;
-    load().then((d) => active && setDrafts([...d]));
-    const listener: Listener = (d) => setDrafts([...d]);
-    listeners.add(listener);
-    return () => {
-      active = false;
-      listeners.delete(listener);
-    };
-  }, []);
-
-  const triggerSync = useCallback(() => sync(), []);
-
-  return {
-    drafts,
-    pending: drafts.filter((d) => !d.syncedIssueId),
-    pendingCount: drafts.filter((d) => !d.syncedIssueId).length,
-    enqueueDraft,
-    sync: triggerSync,
-    clearSynced,
-  };
+  useEffect(() => { let active = true; void load().then((items) => active && setDrafts([...items])); const listener: Listener = (items) => setDrafts([...items]); listeners.add(listener); return () => { active = false; listeners.delete(listener); }; }, []);
+  return { drafts, pending: drafts.filter((draft) => draft.state !== 'accepted'), pendingCount: drafts.filter((draft) => draft.state !== 'accepted').length, blockedCount: drafts.filter((draft) => draft.state === 'needs_attention').length, enqueueDraft, sync: useCallback(() => sync(), []), clearSynced };
 }

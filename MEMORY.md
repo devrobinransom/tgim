@@ -13,6 +13,7 @@ TGIM (Thank God It's Monday) is a citizen civic reporting, volunteer verificatio
 - **Backend API:** Fastify + Prisma + Neon Postgres (PostGIS + pgvector).
 
 ## Repository Index
+- **Detailed Product Plans:** [docs/PRODUCT_PLANS.md](file:///home/xzcute/Code/tgim/docs/PRODUCT_PLANS.md)
 - **Original Product Spec:** [docs/superpowers/specs/2026-05-21-tgim-v1-product-architecture-spec.md](file:///home/robfk/xzcute/tgim/docs/superpowers/specs/2026-05-21-tgim-v1-product-architecture-spec.md)
 - **Expert Audit & Lockdown Blueprint:** [expert_audit_report.md](file:///home/robfk/.gemini/antigravity-cli/brain/60b3c74d-5843-4fc5-8867-a20d5e11c541/expert_audit_report.md)
 - **Active System Blueprint:** [.omg/state/blueprint.md](file:///home/robfk/xzcute/tgim/.omg/state/blueprint.md)
