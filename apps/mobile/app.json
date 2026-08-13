@@ -38,7 +38,13 @@
         }
       ],
       "@maplibre/maplibre-react-native",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "TGIM uses the microphone only when you record a voice description of a civic issue."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

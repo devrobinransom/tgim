@@ -76,17 +76,40 @@ export function SearchSurface({ label }: { label: string }) {
   );
 }
 
-export function MapPreview({ issues }: { issues: PublicIssue[] }) {
+export function MapPreview({
+  issues,
+  height = 200,
+  onSelect,
+  selectedAreaName,
+}: {
+  issues: PublicIssue[];
+  height?: number;
+  onSelect?: (issueId: string) => void;
+  selectedAreaName?: string;
+}) {
   const mapStyle = process.env.EXPO_PUBLIC_MAP_STYLE_URL;
+  const shape = (processStyle: string | undefined) => ({ type: 'FeatureCollection', features: issues.map(issue => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [issue.public_longitude, issue.public_latitude] }, properties: { id: issue.id, category: issue.category } })) }) as any;
   if (mapStyle) {
-    const shape = { type: 'FeatureCollection', features: issues.map(issue => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [issue.public_longitude, issue.public_latitude] }, properties: { category: issue.category } })) } as any;
     return (
-      <View accessibilityLabel={`Privacy-safe map showing ${issues.length} blurred public report locations`} style={{ height: MAP_H, borderRadius: theme.radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+      <View accessibilityLabel={`Privacy-safe map showing ${issues.length} blurred public report locations`} style={{ height, borderRadius: theme.radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
         <Map style={{ flex: 1 }} mapStyle={mapStyle}>
           <Camera initialViewState={{ center: [72.86, 19.12], zoom: 10.5 }} />
-          <GeoJSONSource id="issues" data={shape}><Layer id="issue-points" type="circle" paint={{ 'circle-radius': 8, 'circle-color': theme.accent, 'circle-opacity': 0.8, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }} /></GeoJSONSource>
+          <GeoJSONSource
+            id="issues"
+            data={shape(mapStyle)}
+            onPress={onSelect ? (event) => {
+              const feature = event.nativeEvent.features?.[0] as { properties?: { id?: string } } | undefined;
+              if (feature?.properties?.id) onSelect(feature.properties.id);
+            } : undefined}
+          >
+            <Layer
+              id="issue-points"
+              type="circle"
+              paint={{ 'circle-radius': 8, 'circle-color': theme.accent, 'circle-opacity': 0.8, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }}
+            />
+          </GeoJSONSource>
         </Map>
-        <View style={{ position: 'absolute', top: 8, left: 8 }}><Badge label={`${issues.length} blurred reports`} color={theme.accent} /></View>
+        <View style={{ position: 'absolute', top: 8, left: 8 }}><Badge label={selectedAreaName ? `${issues.length} ${selectedAreaName.toLowerCase()}` : `${issues.length} blurred reports`} color={theme.accent} /></View>
       </View>
     );
   }
@@ -100,7 +123,7 @@ export function MapPreview({ issues }: { issues: PublicIssue[] }) {
         borderColor: theme.border,
       }}
     >
-      <Svg width="100%" height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
+      <Svg width="100%" height={height} viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
         <Rect x={0} y={0} width={MAP_W} height={MAP_H} fill={theme.slate[100]} />
         {issues.map((issue) => {
           const { x, y } = project(issue.public_latitude, issue.public_longitude);
@@ -114,6 +137,185 @@ export function MapPreview({ issues }: { issues: PublicIssue[] }) {
       <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
         <Badge label="blurred public locations" color={theme.slate[500]} />
       </View>
+    </View>
+  );
+}
+
+/** Plain-language issue card for the Near-you feed. */
+export function IssueCard({
+  issue,
+  locality,
+  onPress,
+  actionLabel,
+}: {
+  issue: PublicIssue;
+  locality?: string;
+  onPress: () => void;
+  actionLabel?: string;
+}) {
+  const color = tokens.categoryColor[issue.category as IssueCategory] ?? theme.accent;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel={`${issue.category}: ${issue.description}`}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: theme.card,
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.border,
+        padding: theme.spacing.md,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Badge label={issue.category} color={color} />
+          {issue.pincode_code ? <Text style={{ color: theme.textMuted, fontSize: 11 }}>{issue.pincode_code}</Text> : null}
+        </View>
+        <Text numberOfLines={2} style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>
+          {issue.description}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {locality ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Ionicons name="location" size={13} color={theme.textMuted} />
+              <Text style={{ color: theme.textMuted, fontSize: 12 }}>{locality}</Text>
+            </View>
+          ) : null}
+          <Text style={{ color: theme.textMuted, fontSize: 12 }}>{issue.status.replace(/_/g, ' ')}</Text>
+        </View>
+        {actionLabel ? <Text style={{ color, fontWeight: '700', fontSize: 13 }}>{actionLabel}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.slate[400]} />
+    </Pressable>
+  );
+}
+
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
+  return (
+    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.xl, gap: 10, alignItems: 'center' }}>
+      <Ionicons name={icon} size={32} color={theme.accent} />
+      <Text style={{ color: theme.text, fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>{body}</Text>
+      {action}
+    </View>
+  );
+}
+
+export function SectionHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 17, fontWeight: '800', color: theme.text }}>{title}</Text>
+        {subtitle ? <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 1 }}>{subtitle}</Text> : null}
+      </View>
+      {right}
+    </View>
+  );
+}
+
+export function CategoryShortcuts({
+  categories,
+  selected,
+  onSelect,
+  allowClear,
+}: {
+  categories: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[];
+  selected?: string | null;
+  onSelect: (key: string | null) => void;
+  allowClear?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {categories.map((item) => {
+        const active = selected === item.key;
+        const color = tokens.categoryColor[item.key as IssueCategory] ?? theme.accent;
+        return (
+          <Pressable
+            key={item.key}
+            onPress={() => onSelect(active && allowClear ? null : item.key)}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: theme.radius.pill,
+              borderWidth: 1,
+              borderColor: active ? color : theme.border,
+              backgroundColor: active ? color + '14' : theme.card,
+            }}
+          >
+            <Ionicons name={item.icon} size={16} color={active ? color : theme.textMuted} />
+            <Text style={{ color: active ? color : theme.text, fontWeight: '700', fontSize: 13 }}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export type MilestoneJourneyItem = {
+  label: string;
+  value?: string;
+  state: 'complete' | 'current' | 'pending' | 'disputed';
+  date?: string;
+  evidenceUrl?: string;
+};
+
+/** Ordered delivery journey. States are always shown with text, never color-only. */
+export function MilestoneJourney({
+  items,
+  emptyTitle,
+  emptyBody,
+}: {
+  items: MilestoneJourneyItem[];
+  emptyTitle?: string;
+  emptyBody?: string;
+}) {
+  if (items.length === 0) {
+    return <EmptyState icon="trail-sign" title={emptyTitle ?? 'No progress steps yet'} body={emptyBody ?? 'Delivery steps will appear here as work begins.'} />;
+  }
+  const iconFor = (state: MilestoneJourneyItem['state']) =>
+    state === 'complete' ? 'checkmark-circle' : state === 'current' ? 'radio-button-on' : state === 'disputed' ? 'alert-circle' : 'radio-button-off';
+  const colorFor = (state: MilestoneJourneyItem['state']) =>
+    state === 'disputed' ? theme.palette.danger : state === 'complete' ? theme.palette.success : state === 'current' ? theme.accent : theme.slate[400];
+  return (
+    <View style={{ backgroundColor: theme.card, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.border, padding: theme.spacing.lg, gap: 0 }}>
+      {items.map((item, index) => (
+        <View key={`${item.label}-${index}`} style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ alignItems: 'center', gap: 2 }}>
+            <Ionicons name={iconFor(item.state)} size={20} color={colorFor(item.state)} />
+            {index < items.length - 1 ? <View style={{ width: 2, flex: 1, minHeight: 18, backgroundColor: item.state === 'complete' ? theme.palette.success : theme.slate[200] }} /> : null}
+          </View>
+          <View style={{ flex: 1, paddingBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>{item.label}</Text>
+              {item.date ? <Text style={{ color: theme.textMuted, fontSize: 11 }}>{item.date}</Text> : null}
+            </View>
+            {item.value ? <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 1 }}>{item.value}</Text> : null}
+            {item.evidenceUrl ? (
+              <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13, marginTop: 2 }}>{`${String.fromCharCode(0x1f517)} evidence`}</Text>
+            ) : null}
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

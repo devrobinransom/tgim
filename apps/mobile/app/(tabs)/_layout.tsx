@@ -3,6 +3,13 @@ import { Tabs } from 'expo-router';
 import { theme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
 
+/**
+ * Five-tab IA: Home · Explore · Report · Promises · You.
+ *
+ * The specialist flows (verify, manifesto, participate, tracker) are removed
+ * from the tab bar but stay route-resolvable for deep links and workspaces
+ * inside "You", so existing URLs and share links keep working.
+ */
 export default function TabsLayout() {
   const { t } = useI18n();
   return (
@@ -18,8 +25,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('map'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
+          title: t('home'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: t('explore'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -30,40 +44,28 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="verify"
+        name="promises"
         options={{
-          title: t('verify'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="manifesto"
-        options={{
-          title: t('manifesto'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="document-text" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="participate"
-        options={{
-          title: 'Participate',
-          tabBarIcon: ({ color, size }) => <Ionicons name="checkbox" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="tracker"
-        options={{
-          title: t('tracker'),
+          title: t('promises'),
           tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done-circle" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="me"
         options={{
-          title: t('me'),
+          title: t('you'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
         }}
       />
+      {/*
+        Hidden-but-routable specialist screens. They no longer appear in the
+        tab bar; navigation happens through "You" workspaces and deep links.
+        `href: null` keeps them out of the auto-generated bottom bar entirely.
+      */}
+      <Tabs.Screen name="verify" options={{ href: null }} />
+      <Tabs.Screen name="manifesto" options={{ href: null }} />
+      <Tabs.Screen name="participate" options={{ href: null }} />
+      <Tabs.Screen name="tracker" options={{ href: null }} />
     </Tabs>
   );
 }

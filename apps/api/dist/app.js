@@ -10,6 +10,7 @@ import { requireActor } from './auth.js';
 import { generateManifestoPromises } from './services/manifesto-generator.service.js';
 import { readLocalEvidence, storeEvidence } from './services/evidence-storage.service.js';
 import { renderManifestoPdf } from './services/pdf-export.service.js';
+import { synthesizeSpeech, transcribeAudio } from './services/sarvam-ai.service.js';
 import { authenticateMcpBearer } from './mcp-auth.js';
 import { createMcpServer } from './mcp-server.js';
 import { isPublicVisibility, toPublicDisputeOutcome, toPublicExternalCase, toPublicIssue, toPublicManifesto, toPublicVerification } from './public-projection.js';
@@ -247,6 +248,71 @@ export function buildApp() {
             return reply.status(404).send({ error: 'Evidence not found' });
         reply.header('cache-control', 'public, max-age=31536000, immutable');
         return reply.type(object.contentType).send(object.body);
+    });
+    // --- Sarvam AI proxy (voice-to-text and text-to-speech) ---
+    // The subscription key lives only server-side; clients send base64 audio and
+    // receive a transcript (Report voice entry) or base64 speech (read-aloud).
+    app.post('/api/v1/ai/speech-to-text', async (request, reply) => {
+        const actor = await requireActor(request, reply, ['citizen', 'volunteer', 'platform_admin']);
+        if (!actor)
+            return;
+        const body = request.body;
+        if (typeof body.audio_base64 !== 'string' || !body.audio_base64) {
+            return reply.status(400).send({ error: 'audio_base64 is required' });
+        }
+        const bytes = Buffer.from(body.audio_base64, 'base64');
+        const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        const mimeType = typeof body.media_type === 'string' && body.media_type ? body.media_type : 'audio/m4a';
+        const language = typeof body.language === 'string' ? body.language : 'en';
+        if (!bytes.length || bytes.byteLength > 20_000_000) {
+            return reply.status(400).send({ error: 'audio_base64 must decode to between 1 byte and 20 MB' });
+        }
+        try {
+            const result = await transcribeAudio({ bytes: arrayBuffer, mimeType, language });
+            await dbService.audit.log({
+                actor_id: actor.id,
+                event_type: 'ai.speech_to_text',
+                target_table: 'users',
+                target_id: actor.id,
+                payload: { language_code: result.language_code ?? null, request_id: result.request_id ?? null },
+            });
+            return reply.send({ transcript: result.transcript, language_code: result.language_code ?? null });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : 'Speech-to-text failed';
+            if (message.includes('not configured')) {
+                return reply.status(503).send({ error: { code: 'ai_not_configured', message } });
+            }
+            return reply.status(502).send({ error: { code: 'ai_provider_error', message } });
+        }
+    });
+    app.post('/api/v1/ai/text-to-speech', async (request, reply) => {
+        const actor = await requireActor(request, reply, ['citizen', 'volunteer', 'platform_admin']);
+        if (!actor)
+            return;
+        const body = request.body;
+        if (typeof body.text !== 'string' || body.text.length < 2 || body.text.length > 2500) {
+            return reply.status(400).send({ error: 'text must be a string between 2 and 2500 characters' });
+        }
+        const language = typeof body.language === 'string' ? body.language : 'en';
+        try {
+            const { audioBase64, mimeType } = await synthesizeSpeech({ text: body.text, language });
+            await dbService.audit.log({
+                actor_id: actor.id,
+                event_type: 'ai.text_to_speech',
+                target_table: 'users',
+                target_id: actor.id,
+                payload: { characters: body.text.length, language },
+            });
+            return reply.send({ audio_base64: audioBase64, media_type: mimeType });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : 'Speech synthesis failed';
+            if (message.includes('not configured')) {
+                return reply.status(503).send({ error: { code: 'ai_not_configured', message } });
+            }
+            return reply.status(502).send({ error: { code: 'ai_provider_error', message } });
+        }
     });
     // --- Identity / Sandbox Role Switching ---
     app.get('/api/v1/auth/me', async (request, reply) => {

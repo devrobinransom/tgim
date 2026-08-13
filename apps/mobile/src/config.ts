@@ -1,5 +1,9 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import type { ComponentProps } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 /**
  * Resolve the API base URL. On a physical device `localhost` points at the
@@ -46,3 +50,15 @@ export const LANGUAGES = [
   { code: 'hi', label: 'हिंदी' },
   { code: 'mr', label: 'मराठी' },
 ] as const;
+
+/** Issue interests shown during onboarding. Derived from shared categories. */
+export const INTEREST_CATEGORIES: { key: string; label: string; icon: IoniconName }[] = [
+  { key: 'water', label: 'Water', icon: 'water' },
+  { key: 'roads', label: 'Roads', icon: 'car' },
+  { key: 'garbage', label: 'Garbage', icon: 'trash' },
+  { key: 'health', label: 'Health', icon: 'medkit' },
+  { key: 'safety', label: 'Safety', icon: 'shield' },
+  { key: 'jobs', label: 'Jobs', icon: 'briefcase' },
+  { key: 'transport', label: 'Transport', icon: 'bus' },
+  { key: 'housing', label: 'Housing', icon: 'home' },
+];

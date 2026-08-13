@@ -9,18 +9,35 @@ import type { UserRole } from '@tgim/shared';
 
 const STORAGE_KEY = 'tgim:session:v1';
 
+export interface SavedArea {
+  id: string;
+  name: string;
+}
+
 interface SessionState {
   role: UserRole;
   language: string;
   onboarded: boolean;
+  areaId: string;
+  areaName: string;
+  interests: string[];
 }
 
-const DEFAULT: SessionState = { role: 'citizen', language: 'en', onboarded: false };
+const DEFAULT: SessionState = {
+  role: 'citizen',
+  language: 'en',
+  onboarded: false,
+  areaId: '',
+  areaName: '',
+  interests: [],
+};
 
 interface SessionContextValue extends SessionState {
   ready: boolean;
   setRole: (role: UserRole) => void;
   setLanguage: (language: string) => void;
+  setArea: (area: SavedArea) => void;
+  setInterests: (interests: string[]) => void;
   completeOnboarding: () => void;
 }
 
@@ -49,6 +66,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       ready,
       setRole: (role) => update({ role }),
       setLanguage: (language) => update({ language }),
+      setArea: (area) => update({ areaId: area.id, areaName: area.name }),
+      setInterests: (interests) => update({ interests }),
       completeOnboarding: () => update({ onboarded: true }),
     };
   }, [state, ready]);

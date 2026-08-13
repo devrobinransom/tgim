@@ -109,6 +109,10 @@ export function createApiClient({ baseUrl, fetch: fetchImpl, getToken, headers }
         media: {
             upload: (input) => request('POST', '/api/v1/media/uploads', input),
         },
+        ai: {
+            transcribeVoice: (input) => request('POST', '/api/v1/ai/speech-to-text', input),
+            speak: (input) => request('POST', '/api/v1/ai/text-to-speech', input),
+        },
         verification: {
             submit: (input) => request('POST', '/api/v1/verification', input),
             assignments: () => request('GET', '/api/v1/verification/assignments'),

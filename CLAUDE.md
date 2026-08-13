@@ -38,7 +38,7 @@ npm workspaces (`apps/*`, `packages/*`):
 - **`packages/shared`** (`@tgim/shared`) — the single source of truth for domain types (`types.ts`), Zod request schemas (`schemas.ts`), and the `calculatePriorityScore` formula (`formulas.ts`). Both API and web import from here. Changes here ripple everywhere.
 - **`apps/api`** (`@tgim/api`) — Fastify server. All routes live in one file, `src/app.ts`; all data access goes through `src/services/db.service.ts`.
 - **`apps/web`** (`@tgim/web`) — Vite + React 19 dashboard. The entire UI is a single ~1600-line `src/App.tsx` with inline styles — a high-fidelity simulator of the planned mobile client, matching the mockups in `mocks/`. It polls the API every 4s and shows a connection badge.
-- **`apps/mobile`** — referenced by the root `start`/`dev:mobile` script but **does not exist yet** (planned React Native + Expo client; the script will fail until it's scaffolded).
+- **`apps/mobile`** (`@tgim/mobile`) — Expo Router (React Native) consumer client. Five-tab IA: **Home · Explore · Report · Promises · You**. Specialist flows (verify/manifesto/participate/tracker) are hidden from the tab bar but stay route-resolvable for workspaces and deep links. Report uses a short 4-step wizard with optional voice-to-description via the server-side Sarvam AI proxy (`src/ai.ts`). QA lives in `src/*.test.ts` (jest-expo).
 
 ## Commands
 

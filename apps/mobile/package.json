@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "jest"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -17,6 +18,7 @@
     "@tgim/api-client": "workspace:*",
     "@tgim/shared": "workspace:*",
     "expo": "~57.0.4",
+    "expo-audio": "~57.0.3",
     "expo-auth-session": "~57.0.6",
     "expo-constants": "~57.0.3",
     "expo-crypto": "~57.0.1",
@@ -37,9 +39,13 @@
     "react-native-svg": "15.15.5"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "^0.86.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.7",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.0",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.4",
     "typescript": "^6.0.2"
   }
 }

@@ -185,6 +185,23 @@ export declare function createApiClient({ baseUrl, fetch: fetchImpl, getToken, h
     media: {
         upload: (input: UploadEvidenceInput) => Promise<EvidenceUploadResult>;
     };
+    ai: {
+        transcribeVoice: (input: {
+            audio_base64: string;
+            media_type: string;
+            language: string;
+        }) => Promise<{
+            transcript: string;
+            language_code: string | null;
+        }>;
+        speak: (input: {
+            text: string;
+            language: string;
+        }) => Promise<{
+            audio_base64: string;
+            media_type: string;
+        }>;
+    };
     verification: {
         submit: (input: SubmitVerificationInput) => Promise<VerificationResponse>;
         assignments: () => Promise<VerificationAssignment[]>;

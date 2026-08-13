@@ -19,6 +19,10 @@ export default function RootLayout() {
               name="issue/[id]"
               options={{ headerShown: true, title: 'Issue Detail', presentation: 'card' }}
             />
+            <Stack.Screen
+              name="promise/[id]"
+              options={{ headerShown: true, title: 'Delivery Journey', presentation: 'card' }}
+            />
           </Stack>
         </SessionProvider>
       </OidcSessionProvider>

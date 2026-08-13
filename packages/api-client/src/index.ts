@@ -264,6 +264,13 @@ export function createApiClient({ baseUrl, fetch: fetchImpl, getToken, headers }
       upload: (input: UploadEvidenceInput) => request<EvidenceUploadResult>('POST', '/api/v1/media/uploads', input),
     },
 
+    ai: {
+      transcribeVoice: (input: { audio_base64: string; media_type: string; language: string }) =>
+        request<{ transcript: string; language_code: string | null }>('POST', '/api/v1/ai/speech-to-text', input),
+      speak: (input: { text: string; language: string }) =>
+        request<{ audio_base64: string; media_type: string }>('POST', '/api/v1/ai/text-to-speech', input),
+    },
+
     verification: {
       submit: (input: SubmitVerificationInput) =>
         request<VerificationResponse>('POST', '/api/v1/verification', input),
