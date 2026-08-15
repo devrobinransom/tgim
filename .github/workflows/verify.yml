@@ -2,7 +2,7 @@ name: verify
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
 permissions: { contents: read }
 concurrency: { group: verify-${{ github.ref }}, cancel-in-progress: true }
 jobs:

@@ -1,0 +1,15 @@
+# Default ownership
+* @devrobinransom
+
+# Security, privacy, identity, public projection and data model
+/apps/api/src/auth.ts @devrobinransom
+/apps/api/src/** @devrobinransom
+/apps/api/prisma/** @devrobinransom
+
+# Citizen-facing mobile product and privacy-sensitive location/reporting flows
+/apps/mobile/** @devrobinransom
+
+# Deployment, CI and infrastructure
+/.github/workflows/** @devrobinransom
+/infra/** @devrobinransom
+/scripts/verify-sovereign.sh @devrobinransom
