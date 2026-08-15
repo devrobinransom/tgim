@@ -17,7 +17,7 @@
     "typecheck:mobile": "pnpm --filter @tgim/mobile typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "verify": "pnpm --filter @tgim/shared build && pnpm --filter @tgim/api-client build && pnpm --filter @tgim/api test && pnpm --filter @tgim/web build && pnpm --filter @tgim/mobile test && pnpm --filter @tgim/mobile typecheck",
+    "verify": "pnpm --filter @tgim/shared build && pnpm --filter @tgim/api-client build && pnpm --filter @tgim/api build && pnpm --filter @tgim/api test && pnpm --filter @tgim/web build && pnpm --filter @tgim/mobile lint && pnpm --filter @tgim/mobile test && pnpm --filter @tgim/mobile typecheck",
     "verify:sovereign": "sh scripts/verify-sovereign.sh"
   },
   "devDependencies": {
