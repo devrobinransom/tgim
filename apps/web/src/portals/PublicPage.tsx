@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarDays, Check, CheckCircle2, Clock3, ExternalLink, FileText, HelpCircle, Landmark, MapPin, Minus, Scale, Share2, ShieldCheck, ThumbsDown, ThumbsUp, UserRoundCheck } from 'lucide-react';
+import { CalendarDays, Check, CheckCircle2, Clock3, ExternalLink, FileText, HelpCircle, Landmark, MapPin, Minus, Scale, Share2, ShieldCheck, ThumbsDown, ThumbsUp, UserRoundCheck, ArrowUpRight, Sparkles } from 'lucide-react';
 import type { AreaDashboardSummary, CitizenVerdictValue, ExternalCaseDocument, ManifestoPromise, PromiseAccountabilityRecord, PromiseMilestone, PublicClusterDetail, PublicIssue } from '@tgim/shared';
 import type { ManifestoDetail } from '@tgim/api-client';
 import { useAsyncAction, usePortalApi } from '../lib/useDashboardData';
@@ -32,6 +33,9 @@ function PublicAreaPage({ areaId }: { areaId: string }) {
   const [issues, setIssues] = useState<PublicIssue[]>([]);
   const [manifesto, setManifesto] = useState<ManifestoDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const activeSearch = (searchParams?.get('search') ?? searchParams?.get('q') ?? '').trim().toLowerCase();
+  const activeCategory = (searchParams?.get('category') ?? '').trim().toLowerCase();
 
   useEffect(() => {
     let active = true;
@@ -49,10 +53,22 @@ function PublicAreaPage({ areaId }: { areaId: string }) {
   if (error) return <LoadError message={error} />;
   if (!summary) return <main className="ledger-empty"><Clock3 size={30} /><h1>Loading public area record</h1><p>Fetching privacy-safe issue and promise evidence.</p></main>;
 
+  const areaLabel = areaId === 'ward-12-id' ? 'Ward 12' : 'Mumbai South Central';
+  const categoryCards = Object.entries(summary.category_mix).slice(0, 5);
+  const filteredIssues = issues.filter((issue) => {
+    const matchesCategory = !activeCategory || issue.category.toLowerCase() === activeCategory;
+    const matchesSearch = !activeSearch || issue.description.toLowerCase().includes(activeSearch) || issue.category.toLowerCase().includes(activeSearch);
+    return matchesCategory && matchesSearch;
+  });
+
   return <main className="page-stack public-record">
+    <section className="public-context-card">
+      <div className="public-context-heading"><span className="context-orb"><MapPin size={22} /></span><div><div className="meta-line">Live public record</div><h1>{areaLabel}</h1><p>Mumbai District, Maharashtra</p></div></div>
+      <div className="public-live-status"><span className="live-dot" /> Live <span>Updated just now</span></div>
+    </section>
     <header className="page-header">
-      <div><div className="meta-line"><ShieldCheck size={16} /> Public, privacy-safe area record</div><h1>Area accountability record</h1><p>Demand, verification, promises, and delivery evidence for this area. Exact reporter locations and identities are not shown.</p></div>
-      <div className="header-actions"><Link className="button secondary" href={`/public/manifestos/${areaId}`}>Read manifesto</Link></div>
+      <div><div className="meta-line"><ShieldCheck size={16} /> Privacy-safe civic signal</div><h1>See what residents are asking for.</h1><p>Explore verified problems, published promises, and delivery evidence for this area. Exact reporter locations and identities are never shown.</p></div>
+      <div className="header-actions"><Link className="button primary" href="/participate"><Sparkles size={16} /> Pin a problem</Link><Link className="button secondary" href={`/public/manifestos/${areaId}`}>Read manifesto <ArrowUpRight size={15} /></Link></div>
     </header>
     <section className="metric-grid">
       <MetricCard label="Reports" value={String(summary.report_count)} detail="privacy-safe public records" />
@@ -62,13 +78,22 @@ function PublicAreaPage({ areaId }: { areaId: string }) {
     </section>
     <section className="workspace-grid">
       <Panel className="map-panel-wide" title="Where reports are clustering" description="Explore the public-safe pattern. Select a point for its evidence record; precise reporter locations never reach the map.">
-        <GeoMap issues={issues} label="Public issue pattern for this area" />
+        <GeoMap issues={filteredIssues} label="Public issue pattern for this area" />
       </Panel>
       <Panel title="Local issue evidence" description="Each link opens a source record using blurred or public-safe location only.">
-        {issues.length === 0 ? <EmptyState title="No public reports yet" copy="Reports will appear here after a citizen submits a local issue." /> : issues.map(issue => <article className="queue-row" key={issue.id}><MapPin size={20} /><div><strong>{issue.description}</strong><p><CategoryBadge category={issue.category} /> {issue.severity} severity · {issue.status}</p><span>{issue.cluster_id ? <Link href={`/public/clusters/${issue.cluster_id}`}>Open cluster evidence</Link> : 'Awaiting cluster review'}</span></div></article>)}
+        <div id="evidence" />
+        {(activeSearch || activeCategory) && (
+          <p className="supporting-copy">
+            Showing {filteredIssues.length} of {issues.length} reports
+            {activeSearch ? ` for “${activeSearch}”` : ''}{activeCategory ? ` in ${activeCategory}` : ''}.{' '}
+            <Link href={`/public/area/${areaId}`}>Clear filters</Link>
+          </p>
+        )}
+        {filteredIssues.length === 0 ? <EmptyState title="No matching reports" copy={issues.length === 0 ? "Reports will appear here after a citizen submits a local issue." : "No reports match the current search or category filter."} /> : filteredIssues.map(issue => <article className="queue-row" key={issue.id}><MapPin size={20} /><div><strong>{issue.description}</strong><p><CategoryBadge category={issue.category} /> {issue.severity} severity · {issue.status}</p><span>{issue.cluster_id ? <Link href={`/public/clusters/${issue.cluster_id}`}>Open cluster evidence</Link> : 'Awaiting cluster review'}</span></div></article>)}
       </Panel>
       <Panel title="Area evidence summary" description="Counts describe the visible public record, not individual residents."><p className="supporting-copy">{Object.entries(summary.category_mix).map(([category, count]) => `${category}: ${count}`).join(' · ') || 'No category data yet.'}</p>{manifesto ? <><strong>Manifesto version {manifesto.version}</strong><p>{manifesto.promises.length} evidence-linked promises are available.</p><Link className="button secondary" href={`/public/manifestos/${areaId}`}>Read published promises</Link></> : <EmptyState title="No published manifesto" copy="A party may draft commitments, but they appear here only after explicit publication." />}</Panel>
     </section>
+    {categoryCards.length ? <section className="public-category-row" aria-label="Top issue categories">{categoryCards.map(([category, count]) => <Link className="public-category-card" key={category} href={`/public/area/${areaId}?category=${encodeURIComponent(category)}`}><span>{category}</span><strong>{count}</strong><small>reports <ArrowUpRight size={13} /></small></Link>)}</section> : null}
   </main>;
 }
 
