@@ -4,8 +4,15 @@ All notable changes to TGIM are documented here. This project adheres to [Keep a
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-30
+
+### Added
+- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1, civic scope), `.github/ISSUE_TEMPLATE/*` (bug/feature with guardrail checks), `.github/pull_request_template.md` with privacy/audit checklist
+- `CHANGELOG.md` (Keep a Changelog)
+
 ### Changed
-- Web public record now filters by `?search=` / `?q` and `?category=` with clear-filters control; mobile nav de-duplicated (`#evidence` anchor).
+- Web public record now filters by `?search=` / `?q` and `?category=` with clear-filters control; mobile nav de-duplicated (`#evidence` anchor)
+- `SECURITY.md` prefers GitHub private advisory as sole channel (removes placeholder `security@tgim.example`)
 
 ## [0.1.0] - 2026-08-30
 
@@ -19,5 +26,6 @@ All notable changes to TGIM are documented here. This project adheres to [Keep a
 ### Fixed
 - CI `verify.yml` YAML parsing
 
-[Unreleased]: https://github.com/devrobinransom/tgim/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/devrobinransom/tgim/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/devrobinransom/tgim/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/devrobinransom/tgim/releases/tag/v0.1.0
