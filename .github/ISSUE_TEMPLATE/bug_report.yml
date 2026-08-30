@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible bug in API, web, mobile, or infra
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Privacy leaks and auth bypass are **security** issues — use [private advisory](https://github.com/devrobinransom/tgim/security/advisories/new) instead of this form.
+  - type: input
+    id: area
+    attributes:
+      label: Area / pincode (if relevant)
+      placeholder: "e.g. 400053, ward-12-id, or N/A"
+    validations:
+      required: false
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - apps/api
+        - apps/web
+        - apps/mobile
+        - packages/shared
+        - packages/api-client
+        - infra/k8s
+        - docs
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened vs what you expected?
+      placeholder: "Concise civic-domain summary using issue/cluster/manifesto/promise/delivery/audit language"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Minimal steps, including in-memory vs DB mode if relevant.
+      placeholder: |
+        1. TGIM_IN_MEMORY=true pnpm dev:api
+        2. ...
+        3. Observe ...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What should have happened with privacy/audit guardrails intact?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, request IDs, or screenshots
+      description: Redact citizen PII, exact coordinates, and secrets. Include x-request-id if available.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: "e.g. v0.1.0, 7e404b41, or main"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked that this is not a privacy/auth/audit vulnerability (those use private advisory)
+          required: true
+        - label: I ran `pnpm verify` or the relevant package check locally where practical
+          required: false

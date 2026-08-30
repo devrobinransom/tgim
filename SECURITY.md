@@ -19,10 +19,9 @@ TGIM is pre-`v1.0` civic infrastructure. `main` is the only actively maintained 
 - authentication (OIDC/JWT validation, MCP bearer, BFF token handling),
 - PII or credential exposure.
 
-Instead, use one of:
+Use **GitHub Private Vulnerability Reporting** (preferred): https://github.com/devrobinransom/tgim/security/advisories/new
 
-1. **GitHub Private Vulnerability Reporting**: https://github.com/devrobinransom/tgim/security/advisories/new
-2. **Email**: `security@tgim.example` (replace with your monitored contact; if unset, use the repository owner's primary email linked to `@devrobinransom`)
+If you cannot use GitHub advisories, email the repository owner via the address linked to `@devrobinransom` on GitHub and mention you are requesting a private security channel — do not include exploit details in the initial email.
 
 Include:
 

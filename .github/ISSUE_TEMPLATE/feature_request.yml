@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a new civic workflow, API, or UX improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For new routes, schema, or design-system changes, please open a discussion or issue first and wait for a maintainer to label it `accepted` before a PR.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Domain area
+      options:
+        - issue / cluster / verification
+        - manifesto / party promise
+        - delivery / tracker
+        - audit / moderation / auth
+        - geography / pincode
+        - mobile / web / shared / infra
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and civic impact
+      description: What citizen/volunteer/party/officer/admin workflow does this improve?
+      placeholder: "As a volunteer, I need to ... so that verified demand ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Concrete scope, privacy/audit impact, and alternatives considered.
+      placeholder: "Propose minimal scope, guardrail preservation, and URL/schema changes."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What did you consider and why not?
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked that this does not weaken Zero-Leak Privacy, Double-Entry Audit, or scope-grant authorization
+          required: true
+        - label: I am willing to implement this with tests and docs if accepted
+          required: false
